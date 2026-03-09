@@ -1,0 +1,28 @@
+@use 'shared/styles/variables' as *;
+
+.page {
+  padding: $spacing-lg 0;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+  margin-bottom: $spacing-lg;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.filters {
+  margin-bottom: $spacing-xl;
+}
+
+.list {
+  margin-top: $spacing-lg;
+}

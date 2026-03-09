@@ -1,0 +1,59 @@
+@use 'shared/styles/variables' as *;
+
+.page {
+  padding: $spacing-lg 0;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+  margin-bottom: $spacing-lg;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.section {
+  margin-bottom: $spacing-xl;
+}
+
+.sectionTitle {
+  margin: 0 0 $spacing-md;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: $spacing-lg;
+  border-bottom: 1px solid $color-border;
+}
+
+.tab {
+  padding: $spacing-sm $spacing-md;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: $color-text-muted;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+
+  &:hover {
+    color: $color-text;
+  }
+}
+
+.tabActive {
+  color: $color-accent;
+  border-bottom-color: $color-accent;
+}

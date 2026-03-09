@@ -1,0 +1,27 @@
+@use 'shared/styles/variables' as *;
+
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  max-width: $container-max;
+  width: 100%;
+  margin: 0 auto;
+  padding: $gutter-mobile;
+  padding-top: calc($gutter-mobile + 64px);
+  box-sizing: border-box;
+
+  @include media-md {
+    padding: $gutter-tablet;
+    padding-top: calc($gutter-tablet + 64px);
+  }
+
+  @include media-xl {
+    padding: $gutter-desktop $gutter-desktop-wide;
+    padding-top: calc($gutter-desktop + 64px);
+  }
+}

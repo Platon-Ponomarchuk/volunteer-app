@@ -1,0 +1,35 @@
+.link {
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.25s ease;
+  display: inline-block;
+}
+
+.link:hover {
+  color: $color-accent;
+}
+
+.link.default {
+  color: $color-text;
+}
+
+.link.default:hover {
+  color: $color-accent;
+}
+
+.link.primary {
+  color: $color-accent;
+  text-decoration: underline;
+}
+
+.link.primary:hover {
+  color: $color-accent-hover;
+}
+
+.link.muted {
+  color: $color-text-muted;
+}
+
+.link.muted:hover {
+  color: $color-accent;
+}

@@ -1,0 +1,98 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-sm;
+  font-family: inherit;
+  font-weight: 500;
+  border-radius: $radius-md;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.3s, border-color 0.3s, color 0.3s, box-shadow 0.3s, transform 0.2s;
+  box-shadow: $shadow-sm;
+}
+
+.button:hover:not(:disabled) {
+  box-shadow: $shadow-md;
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: $shadow-sm;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.button.fullWidth {
+  width: 100%;
+}
+
+.sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  min-height: 36px;
+}
+
+.md {
+  padding: $spacing-sm $spacing-md;
+  font-size: 1rem;
+  min-height: 40px;
+}
+
+.lg {
+  padding: 0.75rem $spacing-lg;
+  font-size: 1.125rem;
+  min-height: $touch-min-height;
+}
+
+.primary {
+  background-color: $color-accent;
+  color: #fff;
+}
+
+.primary:hover:not(:disabled) {
+  background-color: $color-accent-hover;
+  color: #fff;
+}
+
+.primary:active:not(:disabled) {
+  background-color: $color-accent-hover;
+  box-shadow: $shadow-sm;
+}
+
+.secondary {
+  background-color: $color-bg-elevated;
+  color: $color-text;
+  border-color: $color-border;
+}
+
+.secondary:hover:not(:disabled) {
+  background-color: rgba(var(--color-text-rgb), 0.04);
+  border-color: $color-text-muted;
+}
+
+.outline {
+  background-color: transparent;
+  border-color: $color-accent;
+  color: $color-accent;
+}
+
+.outline:hover:not(:disabled) {
+  background-color: $color-accent-light;
+  color: $color-accent;
+  border-color: $color-accent;
+}
+
+.ghost {
+  background-color: transparent;
+  color: $color-text;
+  box-shadow: none;
+}
+
+.ghost:hover:not(:disabled) {
+  background-color: rgba(var(--color-text-rgb), 0.06);
+  box-shadow: none;
+}

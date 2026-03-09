@@ -1,0 +1,181 @@
+@use 'shared/styles/variables' as *;
+
+.page {
+  padding: $spacing-lg;
+  max-width: 720px;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+  margin-bottom: $spacing-lg;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.tabs {
+  display: flex;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-xl;
+}
+
+.tab,
+.tabActive {
+  padding: 0.5rem 1rem;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  background: $color-bg;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.tabActive {
+  background: $color-secondary;
+  color: white;
+  border-color: $color-secondary;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+}
+
+.card {
+  padding: $spacing-lg;
+  border: 1px solid $color-border;
+  border-radius: $radius-lg;
+  background: $color-bg-elevated;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.status {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: $radius-sm;
+
+  &[data-status='pending'] {
+    background: rgba(var(--color-accent-rgb), 0.1);
+    color: $color-text-muted;
+  }
+
+  &[data-status='approved'] {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  &[data-status='rejected'] {
+    background: rgba(var(--color-accent-rgb), 0.15);
+    color: $color-secondary;
+  }
+
+  &[data-status='draft'] {
+    background: rgba(var(--color-accent-rgb), 0.1);
+    color: $color-text-muted;
+  }
+
+  &[data-status='published'] {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  &[data-status='cancelled'] {
+    background: rgba(var(--color-accent-rgb), 0.15);
+    color: $color-text-muted;
+  }
+}
+
+.meta {
+  margin: $spacing-xs 0 0;
+  font-size: 0.875rem;
+  color: $color-text-muted;
+}
+
+.desc {
+  margin: $spacing-sm 0 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.rejection {
+  margin-top: $spacing-md;
+  padding: $spacing-sm;
+  background: rgba(var(--color-accent-rgb), 0.08);
+  border-radius: $radius-sm;
+  font-size: 0.875rem;
+}
+
+.actions {
+  display: flex;
+  gap: $spacing-sm;
+  margin-top: $spacing-md;
+}
+
+.empty {
+  margin: 0;
+  color: $color-text-muted;
+}
+
+.subTabs {
+  display: flex;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-lg;
+}
+
+.userRole {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: $radius-sm;
+  background: $color-accent-muted;
+  color: $color-text;
+}
+
+.analytics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-xl;
+}
+
+.statCard {
+  padding: $spacing-xl;
+  min-width: 140px;
+  border: 1px solid $color-border;
+  border-radius: $radius-lg;
+  background: $color-bg-elevated;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.statValue {
+  font-size: 2rem;
+  font-weight: 700;
+  color: $color-secondary;
+}
+
+.statLabel {
+  font-size: 0.875rem;
+  color: $color-text-muted;
+}

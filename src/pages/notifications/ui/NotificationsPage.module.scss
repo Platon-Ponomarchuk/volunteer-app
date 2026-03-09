@@ -1,0 +1,15 @@
+@use 'shared/styles/variables' as *;
+
+.page {
+  padding: $spacing-lg;
+  max-width: 720px;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin: 0 0 $spacing-lg;
+  font-size: 1.5rem;
+  font-weight: 600;
+}

@@ -1,0 +1,49 @@
+@use 'shared/styles/variables' as *;
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  max-width: 520px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+
+  label {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+}
+
+.textarea {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  font-size: 1rem;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.select {
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  font-size: 0.875rem;
+  background: $color-bg;
+  width: 100%;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $spacing-md;
+}
+
+.error {
+  margin: 0;
+  font-size: 0.875rem;
+  color: $color-secondary;
+}

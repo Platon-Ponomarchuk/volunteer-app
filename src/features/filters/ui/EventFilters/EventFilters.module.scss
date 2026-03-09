@@ -1,0 +1,44 @@
+@use 'shared/styles/variables' as *;
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-md;
+  align-items: flex-end;
+}
+
+.search {
+  min-width: 200px;
+  flex: 1;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  min-width: 160px;
+
+  .filterIcon {
+    color: $color-text-muted;
+  }
+}
+
+.select {
+  flex: 1;
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  font-size: 0.875rem;
+  background: $color-bg;
+  min-width: 0;
+}
+
+.input {
+  min-width: 120px;
+}
+
+.dateRow {
+  display: flex;
+  gap: $spacing-sm;
+  align-items: flex-end;
+}

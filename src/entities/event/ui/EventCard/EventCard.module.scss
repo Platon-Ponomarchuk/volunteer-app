@@ -1,0 +1,98 @@
+.cardLink {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  box-sizing: border-box;
+  color: inherit;
+}
+
+.cardLink:hover {
+  color: inherit;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 320px;
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  text-align: left;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-sm;
+  background: $color-bg-elevated;
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: $shadow-lg;
+}
+
+.imageWrapper {
+  flex-shrink: 0;
+  margin: (-$spacing-md) (-1.25rem) $spacing-md;
+  overflow: hidden;
+  border-radius: $radius-lg $radius-lg 0 0;
+  width: calc(100% + 2.5rem);
+  height: 160px;
+}
+
+.image,
+.imagePlaceholder {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.image {
+  object-fit: cover;
+}
+
+.imagePlaceholder {
+  background: rgba(var(--color-accent-rgb), 0.12);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.category {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: $color-text-muted;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: $color-text;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.date,
+.location {
+  margin: 0;
+  font-size: 0.875rem;
+  color: $color-text-muted;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

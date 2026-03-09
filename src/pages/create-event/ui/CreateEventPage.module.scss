@@ -1,0 +1,21 @@
+@use 'shared/styles/variables' as *;
+
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: $spacing-lg 0;
+  min-height: 60vh;
+}
+
+.title {
+  margin: 0 0 $spacing-lg;
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.card {
+  width: 100%;
+  max-width: 560px;
+}

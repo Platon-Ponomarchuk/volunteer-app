@@ -1,0 +1,120 @@
+@use 'shared/styles/variables' as *;
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.item {
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  background: $color-bg;
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.item:hover {
+  box-shadow: $shadow-md;
+  transform: translateY(-1px);
+}
+
+.cardLink {
+  display: block;
+  padding: $spacing-md;
+  color: inherit;
+  text-decoration: none;
+}
+
+.cardLink:hover {
+  color: inherit;
+}
+
+.main {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+}
+
+.eventTitle {
+  font-weight: 600;
+  color: $color-text;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.6rem;
+  border-radius: $radius-sm;
+  border: 1px solid transparent;
+
+  &[data-status='pending'] {
+    color: #92400e;
+    background: #fef3c7;
+    border-color: #f59e0b;
+  }
+
+  &[data-status='approved'] {
+    color: #2e7d32;
+    background: #e8f5e9;
+    border-color: transparent;
+  }
+
+  &[data-status='rejected'] {
+    color: #991b1b;
+    background: #fee2e2;
+    border-color: #ef4444;
+  }
+}
+
+[data-theme='dark'] .status {
+  &[data-status='pending'] {
+    color: #fef3c7;
+    background: rgba(245, 158, 11, 0.25);
+    border-color: #f59e0b;
+  }
+
+  &[data-status='approved'] {
+    color: #a5d6a7;
+    background: rgba(46, 125, 50, 0.2);
+    border-color: transparent;
+  }
+
+  &[data-status='rejected'] {
+    color: #fecaca;
+    background: rgba(239, 68, 68, 0.25);
+    border-color: #ef4444;
+  }
+}
+
+.statsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm $spacing-md;
+  margin-top: $spacing-sm;
+  font-size: 0.8125rem;
+  color: $color-text-muted;
+}
+
+.statItem {
+  display: inline-flex;
+  align-items: center;
+}
+
+.date {
+  margin: $spacing-sm 0 0;
+  font-size: 0.8125rem;
+  color: $color-text-muted;
+}
+
+.empty {
+  margin: 0;
+  color: $color-text-muted;
+}

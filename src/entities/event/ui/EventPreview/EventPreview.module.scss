@@ -1,0 +1,74 @@
+.imageWrapper {
+  margin: (-$spacing-lg) (-$spacing-lg) $spacing-md;
+  overflow: hidden;
+  border-radius: $radius-lg $radius-lg 0 0;
+}
+
+.image {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  display: block;
+}
+
+.category {
+  display: inline-block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: $color-text-muted;
+  margin-bottom: $spacing-sm;
+}
+
+.title {
+  margin: 0 0 $spacing-md;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.meta {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0 1.25rem;
+}
+
+.metaItem {
+  margin: 0;
+}
+
+.metaItem dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: $color-text-muted;
+  margin-bottom: $spacing-xs;
+}
+
+.metaItem dd {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.description {
+  margin-bottom: $spacing-lg;
+}
+
+.description p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.roles h3 {
+  font-size: 1rem;
+  margin: 0 0 $spacing-sm;
+}
+
+.roles ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.roles li {
+  margin-bottom: $spacing-xs;
+}

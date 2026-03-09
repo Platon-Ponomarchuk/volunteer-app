@@ -1,0 +1,30 @@
+.card {
+  box-sizing: border-box;
+  background: $color-bg-elevated;
+  border-radius: $radius-lg;
+  border: 1px solid rgba(var(--color-border-rgb), 0.6);
+  box-shadow: $shadow-sm;
+  overflow: hidden;
+  transition: box-shadow 0.25s, transform 0.25s;
+}
+
+.card:hover {
+  box-shadow: $shadow-md;
+  transform: translateY(-2px);
+}
+
+.padding-none {
+  padding: 0;
+}
+
+.padding-sm {
+  padding: 0.75rem;
+}
+
+.padding-md {
+  padding: $spacing-md 1.25rem;
+}
+
+.padding-lg {
+  padding: $spacing-lg;
+}

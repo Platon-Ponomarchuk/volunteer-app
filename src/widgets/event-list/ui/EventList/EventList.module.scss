@@ -1,0 +1,42 @@
+@use 'shared/styles/variables' as *;
+
+.wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  padding: $spacing-xl;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: $spacing-xl;
+  grid-template-columns: 1fr;
+  box-sizing: border-box;
+
+  @include media-md {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @include media-xl {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @include media-xxl {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.list li {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.empty {
+  margin: 0;
+  color: $color-text-muted;
+  font-size: 1rem;
+}

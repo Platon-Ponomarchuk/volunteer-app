@@ -1,0 +1,14 @@
+@use 'shared/styles/variables' as *;
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  max-width: 360px;
+}
+
+.error {
+  margin: 0;
+  font-size: 0.875rem;
+  color: $color-error;
+}
