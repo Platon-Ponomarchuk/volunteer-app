@@ -1,0 +1,18 @@
+[
+  {
+    "id": "evt-1",
+    "title": "Тестовое мероприятие",
+    "description": "Описание",
+    "date": "2025-06-01",
+    "location": "Москва",
+    "city": "Москва",
+    "categoryId": "cat-1",
+    "categoryName": "Экология",
+    "status": "published",
+    "organizerId": "usr-1",
+    "organizerName": "Организатор",
+    "maxVolunteers": 10,
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  }
+]

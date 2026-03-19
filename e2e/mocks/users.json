@@ -1,0 +1,9 @@
+[
+  {
+    "id": "usr-1",
+    "email": "org@example.com",
+    "name": "Организатор",
+    "role": "organizer",
+    "createdAt": "2025-01-01T00:00:00.000Z"
+  }
+]
