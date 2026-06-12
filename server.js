@@ -250,6 +250,12 @@ async function init() {
         return { ext, mime, buffer };
     };
 
+    const ensureS3Configured = () => {
+        const required = ['S3_ENDPOINT', 'S3_REGION', 'S3_BUCKET', 'S3_ACCESS_KEY', 'S3_SECRET_KEY'];
+        const missing = required.filter((key) => !process.env[key]);
+        return missing.length ? `S3 is not configured: ${missing.join(', ')}` : null;
+    };
+
     const LOGIN_MAX_ATTEMPTS = 5;
     const LOGIN_WINDOW_MS = 60 * 60 * 1000;
     const LOGIN_BLOCK_MS = 15 * 60 * 1000;
@@ -477,6 +483,9 @@ async function init() {
 
     app.post('/upload-avatar', authenticateToken, async (req, res) => {
         try {
+            const s3Error = ensureS3Configured();
+            if (s3Error) return res.status(500).json({ error: s3Error });
+
             const parsed = parseDataImage(req.body?.image);
             if (parsed.error) return res.status(400).json({ error: parsed.error });
 
@@ -512,6 +521,9 @@ async function init() {
 
     app.post('/upload-event-image', authenticateToken, async (req, res) => {
         try {
+            const s3Error = ensureS3Configured();
+            if (s3Error) return res.status(500).json({ error: s3Error });
+
             const { image, eventId } = req.body || {};
             if (!eventId) return res.status(400).json({ error: 'eventId is required' });
 
@@ -768,23 +780,32 @@ async function init() {
             if (!isAdmin(req) && String(organizerId) !== String(req.user.id || req.user.sub)) return forbid(res);
             const payloadObject = req.body.payload ? { ...req.body.payload } : null;
             if (payloadObject?.imageData) {
+                const s3Error = ensureS3Configured();
+                if (s3Error) return res.status(500).json({ error: s3Error });
+
                 const parsed = parseDataImage(payloadObject.imageData);
                 if (parsed.error) return res.status(400).json({ error: parsed.error });
                 const key = `events/request-${id}-${Date.now()}.${parsed.ext}`;
-                payloadObject.imageUrl = await uploadImage(key, parsed.buffer, parsed.mime);
+                try {
+                    payloadObject.imageUrl = await uploadImage(key, parsed.buffer, parsed.mime);
+                } catch (uploadErr) {
+                    console.error('Event request image upload error:', uploadErr);
+                    return res.status(500).json({ error: 'Image upload failed' });
+                }
                 delete payloadObject.imageData;
             }
-            const payload = payloadObject ? JSON.stringify(payloadObject) : null;
+            const payload = payloadObject ? JSON.stringify(payloadObject) : '{}';
             const createdAt = req.body.createdAt || new Date().toISOString();
             const updatedAt = req.body.updatedAt || new Date().toISOString();
 
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO EventRequests (id, organizerId, status, payload, rejectionReason, eventId, createdAt, updatedAt)
-                VALUES (${id}, ${organizerId}, ${status}, ${payload}, ${rejectionReason || null}, ${eventId || null}, ${createdAt}, ${updatedAt})
+                VALUES (${id}, ${organizerId}, ${status}, ${payload}, ${rejectionReason || ''}, ${eventId || ''}, ${createdAt}, ${updatedAt})
             `);
             res.status(201).json({ id, ...req.body, payload: payloadObject, createdAt, updatedAt });
         } catch (err) {
-            console.error(err); res.status(500).json({ error: 'DB Error' });
+            console.error('Event request create error:', err);
+            res.status(500).json({ error: 'Event request create failed' });
         }
     });
 
@@ -800,7 +821,7 @@ async function init() {
 
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO EventRequests (id, organizerId, status, payload, rejectionReason, eventId, createdAt, updatedAt)
-                VALUES (${id}, ${updated.organizerId}, ${updated.status}, ${payload}, ${updated.rejectionReason || null}, ${updated.eventId || null}, ${updated.createdAt}, ${updated.updatedAt})
+                VALUES (${id}, ${updated.organizerId}, ${updated.status}, ${payload || '{}'}, ${updated.rejectionReason || ''}, ${updated.eventId || ''}, ${updated.createdAt}, ${updated.updatedAt})
             `);
             res.json({ ...updated, payload: typeof updated.payload === 'string' ? JSON.parse(updated.payload) : updated.payload });
         } catch (err) {
