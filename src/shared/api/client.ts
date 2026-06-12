@@ -16,7 +16,7 @@ function buildUrl(path: string, params?: Record<string, string>): string {
   const base = env.apiBaseUrl.replace(/\/$/, '')
   if (!base) {
     throw new Error(
-      'VITE_API_BASE_URL не задан. Скопируйте .env.example в .env и укажите URL бэкенда (например http://89.169.144.126:3000).'
+      'VITE_API_BASE_URL не задан. Скопируйте .env.example в .env и укажите URL API (например http://89.169.151.202:3000/api).'
     )
   }
   const url = path.startsWith('/') ? `${base}${path}` : `${base}/${path}`

@@ -133,12 +133,15 @@ npm run preview
 ## Структура проекта
 
 ```
-react-app/
+volunteer-app/
 ├── src/
-│   ├── main.jsx      # Точка входа
-│   ├── App.jsx       # Корневой компонент
-│   ├── App.css
-│   ├── index.css     # Глобальные стили
+│   ├── main.tsx      # Точка входа
+│   ├── app/          # Роутинг, layout, providers, store
+│   ├── pages/        # Страницы приложения
+│   ├── widgets/      # Крупные UI-блоки
+│   ├── features/     # Пользовательские сценарии
+│   ├── entities/     # API, типы и UI доменных сущностей
+│   ├── shared/       # Общие API, UI, стили и утилиты
 │   └── assets/
 ├── index.html
 ├── package.json
