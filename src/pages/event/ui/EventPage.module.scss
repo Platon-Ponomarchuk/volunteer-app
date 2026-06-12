@@ -1,8 +1,8 @@
 @use 'shared/styles/variables' as *;
 
 .page {
-  padding: $spacing-lg 0;
-  max-width: 720px;
+  padding: $spacing-lg 0 $spacing-xxl;
+  max-width: 1120px;
 }
 
 .back {
@@ -11,15 +11,171 @@
   font-size: 0.875rem;
 }
 
-.preview {
-  margin-bottom: $spacing-xl;
+.event {
+  overflow: hidden;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  background: $color-bg-elevated;
+  box-shadow: $shadow-sm;
 }
 
-.apply {
-  margin-top: $spacing-lg;
+.hero {
+  width: 100%;
+  aspect-ratio: 16 / 6;
+  min-height: 220px;
+  max-height: 420px;
+  background: rgba(var(--color-accent-rgb), 0.08);
+}
+
+.heroImage,
+.heroPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+.heroImage {
+  object-fit: cover;
+}
+
+.heroPlaceholder {
+  align-items: center;
+  justify-content: center;
+  color: $color-accent;
+  font-size: clamp(3rem, 8vw, 5rem);
+  font-weight: 700;
+  background:
+    linear-gradient(135deg, rgba(var(--color-accent-rgb), 0.18), rgba(var(--color-text-rgb), 0.06)),
+    $color-bg-elevated;
+}
+
+.contentGrid {
+  display: grid;
+  gap: $spacing-xl;
+  padding: $spacing-xl;
+
+  @include media-lg {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    align-items: start;
+  }
+}
+
+.mainContent {
+  min-width: 0;
+}
+
+.category {
+  display: inline-block;
+  margin-bottom: $spacing-sm;
+  color: $color-text-muted;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  line-height: 1.1;
+}
+
+.description {
+  margin: $spacing-lg 0 0;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+
+  @include media-lg {
+    position: sticky;
+    top: $spacing-lg;
+  }
+}
+
+.meta {
+  display: grid;
+  gap: $spacing-sm;
+  margin: 0;
+}
+
+.meta > div {
+  padding: $spacing-md;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  background: $color-bg;
+}
+
+.meta dt {
+  margin-bottom: $spacing-xs;
+  color: $color-text-muted;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.meta dd {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.roles {
+  margin-top: $spacing-xl;
+}
+
+.roles h2 {
+  margin: 0 0 $spacing-md;
+  font-size: 1.125rem;
+}
+
+.roles ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: $spacing-sm;
+}
+
+.roles li {
+  padding: $spacing-md;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  background: $color-bg;
+}
+
+.roles li strong {
+  margin-right: $spacing-sm;
+}
+
+.roles li span {
+  color: $color-text-muted;
+  font-size: 0.875rem;
+}
+
+.roles li p {
+  margin: $spacing-xs 0 0;
+  color: $color-text-muted;
+}
+
+.apply,
+.applyState {
+  width: 100%;
 }
 
 .error {
   margin: 0 0 $spacing-md;
   color: $color-secondary;
+}
+
+@media (max-width: 767px) {
+  .contentGrid {
+    padding: $spacing-lg;
+  }
+
+  .hero {
+    aspect-ratio: 4 / 3;
+  }
 }

@@ -14,11 +14,27 @@
 
 .button:hover:not(:disabled) {
   box-shadow: $shadow-md;
+  transform: translateY(-1px);
 }
 
 .button:active:not(:disabled) {
   transform: translateY(0);
   box-shadow: $shadow-sm;
+}
+
+.button:focus-visible {
+  outline: 2px solid $color-accent;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
+
+  .button:hover:not(:disabled) {
+    transform: none;
+  }
 }
 
 .button:disabled {

@@ -1,5 +1,6 @@
 import { Link } from '@/shared/ui'
 import { Icon } from '@/shared/ui'
+import { StateBlock } from '@/shared/ui'
 import type { Application } from '@/entities/application'
 import { ROUTES } from '@/shared/constants'
 import { formatDate } from '@/shared/lib'
@@ -31,7 +32,13 @@ export function ApplicationList({
   className,
 }: ApplicationListProps) {
   if (!applications.length) {
-    return <p className={styles.empty}>{emptyMessage}</p>
+    return (
+      <StateBlock
+        title={emptyMessage}
+        description="Когда вы отправите заявку на мероприятие, она появится здесь вместе со статусом."
+        icon="CircleQuestion"
+      />
+    )
   }
 
   return (

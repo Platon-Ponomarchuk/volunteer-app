@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Button, Input } from '@/shared/ui'
+import { Button, FileUpload, Input } from '@/shared/ui'
 import { updateUser, uploadAvatar, type User } from '@/entities/user'
 import { useAuthStore } from '@/app/store'
 import { fileToDataUrl } from '@/shared/lib'
@@ -70,18 +70,13 @@ export function ProfileForm({ user, onSuccess, onError, onCancel }: ProfileFormP
         fullWidth
         disabled={loading}
       />
-      <div className={styles.field}>
-        <label htmlFor="profile-avatar">Аватар</label>
-        <input
-          id="profile-avatar"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
-          disabled={loading}
-          className={styles.fileInput}
-        />
-        {avatarFile && <span className={styles.fileName}>{avatarFile.name}</span>}
-      </div>
+      <FileUpload
+        id="profile-avatar"
+        label="Аватар"
+        file={avatarFile}
+        onChange={setAvatarFile}
+        disabled={loading}
+      />
       <p className={styles.role}>Роль: {user.role === 'volunteer' ? 'Волонтёр' : user.role === 'organizer' ? 'Организатор' : 'Администратор'}</p>
       <div className={styles.actions}>
         <Button type="submit" disabled={loading}>

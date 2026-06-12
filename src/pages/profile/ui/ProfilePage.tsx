@@ -34,13 +34,22 @@ export function ProfilePage() {
       <Card padding="lg" className={styles.card}>
         {!isEditing ? (
           <div className={styles.profileView}>
+            <div className={styles.profileHero}>
+              <div className={styles.avatar} aria-hidden>
+                {user.avatar ? (
+                  <img src={user.avatar} alt="" className={styles.avatarImg} />
+                ) : (
+                  <span>{user.name.slice(0, 1).toUpperCase()}</span>
+                )}
+              </div>
+              <div className={styles.identity}>
+                <strong>{user.name}</strong>
+                <span>{roleLabel}</span>
+              </div>
+            </div>
             <div className={styles.profileRow}>
               <span className={styles.profileLabel}>Email</span>
               <span className={styles.profileValue}>{user.email}</span>
-            </div>
-            <div className={styles.profileRow}>
-              <span className={styles.profileLabel}>Имя</span>
-              <span className={styles.profileValue}>{user.name}</span>
             </div>
             <div className={styles.profileRow}>
               <span className={styles.profileLabel}>Телефон</span>

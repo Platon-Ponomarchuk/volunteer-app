@@ -1,13 +1,13 @@
 import { useParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { Link } from '@/shared/ui'
+import { Link, StateBlock } from '@/shared/ui'
 import { getEventById } from '@/entities/event'
-import { EventPreview } from '@/entities/event'
 import { getMyApplications } from '@/entities/application'
 import { ApplyToEventButton } from '@/features/apply-to-event'
 import { useAuthStore } from '@/app/store'
 import { ROUTES } from '@/shared/constants'
 import { Spinner } from '@/shared/ui'
+import { formatDate, formatDateTime } from '@/shared/lib'
 import styles from './EventPage.module.scss'
 
 export function EventPage() {
@@ -68,12 +68,76 @@ export function EventPage() {
       <Link to={ROUTES.events} className={styles.back}>
         ← К каталогу
       </Link>
-      <EventPreview event={event} className={styles.preview} />
-      {event.status === 'published' && !hasApplication && user?.role === 'volunteer' && (
-        <div className={styles.apply}>
-          <ApplyToEventButton event={event} onSuccess={() => setHasApplication(true)} />
+      <article className={styles.event}>
+        <div className={styles.hero}>
+          {event.imageUrl ? (
+            <img src={event.imageUrl} alt="" className={styles.heroImage} />
+          ) : (
+            <div className={styles.heroPlaceholder} aria-hidden>
+              {event.title.slice(0, 1).toUpperCase()}
+            </div>
+          )}
         </div>
-      )}
+        <div className={styles.contentGrid}>
+          <section className={styles.mainContent}>
+            <span className={styles.category}>{event.categoryName ?? 'Мероприятие'}</span>
+            <h1 className={styles.title}>{event.title}</h1>
+            <p className={styles.description}>{event.description}</p>
+            {event.roles && event.roles.length > 0 && (
+              <section className={styles.roles}>
+                <h2>Роли для волонтёров</h2>
+                <ul>
+                  {event.roles.map((role) => (
+                    <li key={role.id}>
+                      <strong>{role.name}</strong>
+                      <span>{role.requiredCount} чел.</span>
+                      {role.description && <p>{role.description}</p>}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </section>
+          <aside className={styles.sidebar}>
+            <dl className={styles.meta}>
+              <div>
+                <dt>Дата</dt>
+                <dd>{event.endDate ? `${formatDate(event.date)} — ${formatDate(event.endDate)}` : formatDateTime(event.date)}</dd>
+              </div>
+              <div>
+                <dt>Место</dt>
+                <dd>{event.location}</dd>
+              </div>
+              {event.city && (
+                <div>
+                  <dt>Город</dt>
+                  <dd>{event.city}</dd>
+                </div>
+              )}
+              {event.schedule && (
+                <div>
+                  <dt>Расписание</dt>
+                  <dd>{event.schedule}</dd>
+                </div>
+              )}
+              {event.organizerName && (
+                <div>
+                  <dt>Организатор</dt>
+                  <dd>{event.organizerName}</dd>
+                </div>
+              )}
+            </dl>
+            {event.status === 'published' && hasApplication && user?.role === 'volunteer' && (
+              <StateBlock title="Вы уже записались" description="Заявка отображается в разделе «Мои заявки»." tone="success" icon="CircleCheck" className={styles.applyState} />
+            )}
+            {event.status === 'published' && !hasApplication && user?.role === 'volunteer' && (
+              <div className={styles.apply}>
+                <ApplyToEventButton event={event} onSuccess={() => setHasApplication(true)} />
+              </div>
+            )}
+          </aside>
+        </div>
+      </article>
     </main>
   )
 }

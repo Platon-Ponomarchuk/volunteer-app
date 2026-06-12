@@ -56,6 +56,12 @@
   border: 1px solid $color-border;
   border-radius: $radius-lg;
   background: $color-bg-elevated;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+  box-shadow: $shadow-sm;
 }
 
 .cardHeader {
@@ -130,6 +136,7 @@
   display: flex;
   gap: $spacing-sm;
   margin-top: $spacing-md;
+  flex-wrap: wrap;
 }
 
 .empty {
@@ -178,4 +185,113 @@
 .statLabel {
   font-size: 0.875rem;
   color: $color-text-muted;
+}
+
+.requestDetail {
+  padding: $spacing-lg;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  background: $color-bg-elevated;
+  animation: detailIn 0.2s ease-out;
+}
+
+.backButton {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: $color-accent;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  margin-bottom: $spacing-lg;
+}
+
+.backButton:hover {
+  color: $color-accent-hover;
+}
+
+.detailImage {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: $radius-md;
+  margin-bottom: $spacing-lg;
+}
+
+.detailTitle {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.detailGrid {
+  display: grid;
+  gap: $spacing-md;
+  margin: $spacing-lg 0;
+
+  @include media-md {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.detailGrid > div {
+  padding: $spacing-md;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  background: $color-bg;
+}
+
+.detailLabel {
+  display: block;
+  margin-bottom: $spacing-xs;
+  color: $color-text-muted;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.detailSection {
+  margin-top: $spacing-lg;
+}
+
+.detailSection h3 {
+  margin: 0 0 $spacing-sm;
+  font-size: 1rem;
+}
+
+.detailSection p {
+  margin: 0;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.roleList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: $spacing-sm;
+}
+
+.roleList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  background: $color-bg;
+}
+
+@keyframes detailIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

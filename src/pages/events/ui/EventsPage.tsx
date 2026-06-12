@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getEvents } from '@/entities/event'
 import { getCategories } from '@/entities/category'
@@ -26,6 +26,7 @@ export function EventsPage() {
   const [events, setEvents] = useState<Awaited<ReturnType<typeof getEvents>> | undefined>(undefined)
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [categoriesLoading, setCategoriesLoading] = useState(true)
 
   useEffect(() => {
@@ -34,18 +35,29 @@ export function EventsPage() {
       .finally(() => setCategoriesLoading(false))
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
-    queueMicrotask(() => setLoading(true))
+  const loadEvents = useCallback((activeFilters: EventFiltersState, cancelledRef?: { current: boolean }) => {
+    setLoading(true)
+    setError(null)
     getEvents({
-      ...filters,
+      ...activeFilters,
       status: 'published',
     })
-      .then((data) => { if (!cancelled) setEvents(data) })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch only when these filter fields change
-  }, [filters.search, filters.categoryId, filters.city, filters.dateFrom, filters.dateTo])
+      .then((data) => {
+        if (!cancelledRef?.current) setEvents(data)
+      })
+      .catch(() => {
+        if (!cancelledRef?.current) setError('Проверьте подключение к серверу и повторите попытку.')
+      })
+      .finally(() => {
+        if (!cancelledRef?.current) setLoading(false)
+      })
+  }, [])
+
+  useEffect(() => {
+    const cancelledRef = { current: false }
+    queueMicrotask(() => loadEvents(filters, cancelledRef))
+    return () => { cancelledRef.current = true }
+  }, [filters, loadEvents])
 
   const canCreateEvent = user?.role === 'organizer' || user?.role === 'admin'
 
@@ -67,7 +79,13 @@ export function EventsPage() {
           className={styles.filters}
         />
       )}
-      <EventList events={events} loading={loading} className={styles.list} />
+      <EventList
+        events={events}
+        loading={loading}
+        error={error}
+        onRetry={() => loadEvents(filters)}
+        className={styles.list}
+      />
     </main>
   )
 }

@@ -6,7 +6,7 @@ const BASE = '/applications'
 
 /** Все заявки (для админки/аналитики) */
 export async function getAllApplications(): Promise<Application[]> {
-  const result = await request<Application[]>(BASE)
+  const result = await request<Application[]>(BASE, { cacheTime: 10_000 })
   return Array.isArray(result) ? result : []
 }
 
@@ -14,6 +14,7 @@ export async function getAllApplications(): Promise<Application[]> {
 export async function getApplicationsByEventId(eventId: string): Promise<Application[]> {
   const result = await request<(Application & { user?: { name: string } })[]>(`${BASE}`, {
     params: { eventId, _expand: 'user' },
+    cacheTime: 10_000,
   })
   const list = Array.isArray(result) ? result : []
   return list.map((item) => {
@@ -30,7 +31,7 @@ export async function getMyApplications(): Promise<(Application & { eventMaxVolu
   if (!userId) return []
   const result = await request<(Application & { event?: { title: string; date: string; maxVolunteers?: number } })[]>(
     `${BASE}`,
-    { params: { userId, _expand: 'event', _limit: String(APPLICATIONS_LIMIT) } }
+    { params: { userId, _expand: 'event', _limit: String(APPLICATIONS_LIMIT) }, cacheTime: 10_000 }
   )
   const list = Array.isArray(result) ? result : []
   return list.map((item) => {

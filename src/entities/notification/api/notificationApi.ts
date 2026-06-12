@@ -7,6 +7,7 @@ const BASE = '/notifications'
 export async function getNotificationsByUser(userId: string): Promise<Notification[]> {
   const result = await request<Notification[]>(BASE, {
     params: { userId, _sort: 'createdAt', _order: 'desc' },
+    cacheTime: 0,
   })
   return Array.isArray(result) ? result : []
 }

@@ -1,4 +1,4 @@
-import { request } from '@/shared/api'
+import { clearRequestCache, request } from '@/shared/api'
 import { clearStoredAuthToken, getStoredAuthToken, setStoredAuthToken } from '@/shared/lib'
 import type { User } from '../model/types'
 
@@ -17,7 +17,7 @@ export async function getCurrentUser(): Promise<User | null> {
   if (typeof window === 'undefined') return null
   if (!getStoredAuthToken()) return null
   try {
-    return await request<User>('/auth/me')
+    return await request<User>('/auth/me', { cacheTime: 60_000 })
   } catch {
     return null
   }
@@ -25,12 +25,12 @@ export async function getCurrentUser(): Promise<User | null> {
 
 /** Пользователь по ID */
 export async function getUserById(id: string): Promise<User> {
-  return request<User>(`${BASE}/${id}`)
+  return request<User>(`${BASE}/${id}`, { cacheTime: 60_000 })
 }
 
 /** Список пользователей (для админки, отображение имён) */
 export async function getUsers(): Promise<User[]> {
-  const result = await request<User[]>(BASE)
+  const result = await request<User[]>(BASE, { cacheTime: 30_000 })
   return Array.isArray(result) ? result : []
 }
 
@@ -38,6 +38,7 @@ export async function getUsers(): Promise<User[]> {
 export async function getOrganizers(limit = 6): Promise<User[]> {
   const result = await request<User[]>(BASE, {
     params: { role: 'organizer', _limit: String(limit) },
+    cacheTime: 5 * 60 * 1000,
   })
   return Array.isArray(result) ? result : []
 }
@@ -61,6 +62,7 @@ export async function login(credentials: LoginCredentials): Promise<User> {
   }
   if (res.token) {
     setStoredAuthToken(res.token)
+    clearRequestCache()
   }
   return res.user
 }
@@ -89,6 +91,7 @@ export async function register(data: RegisterData): Promise<User> {
   }
   if (res.token) {
     setStoredAuthToken(res.token)
+    clearRequestCache()
   }
   return res.user
 }
@@ -96,6 +99,7 @@ export async function register(data: RegisterData): Promise<User> {
 /** Выход: очистка JWT из localStorage */
 export function logout(): void {
   clearStoredAuthToken()
+  clearRequestCache()
 }
 
 export interface UpdateUserData {

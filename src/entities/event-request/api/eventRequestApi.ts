@@ -6,13 +6,14 @@ const BASE = '/eventRequests'
 
 /** Заявка по ID */
 export async function getEventRequestById(id: string): Promise<EventRequest> {
-  return request<EventRequest>(`${BASE}/${id}`)
+  return request<EventRequest>(`${BASE}/${id}`, { cacheTime: 10_000 })
 }
 
 /** Все заявки на создание мероприятий (для админа) */
 export async function getEventRequests(params?: { status?: string }): Promise<EventRequest[]> {
   const result = await request<EventRequest[]>(BASE, {
     params: params?.status ? { status: params.status } : undefined,
+    cacheTime: 10_000,
   })
   return Array.isArray(result) ? result : []
 }
@@ -21,7 +22,7 @@ export async function getEventRequests(params?: { status?: string }): Promise<Ev
 export async function getMyEventRequests(): Promise<EventRequest[]> {
   const userId = getCurrentUserIdFromToken()
   if (!userId) return []
-  const result = await request<EventRequest[]>(BASE, { params: { organizerId: userId } })
+  const result = await request<EventRequest[]>(BASE, { params: { organizerId: userId }, cacheTime: 10_000 })
   return Array.isArray(result) ? result : []
 }
 

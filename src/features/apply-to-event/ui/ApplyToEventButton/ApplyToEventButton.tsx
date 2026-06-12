@@ -32,17 +32,17 @@ export function ApplyToEventButton({ event, onSuccess, onError, className }: App
 
   const handleSubmit = async (data: { roleId: string; roleName?: string; message?: string }) => {
     setSubmitError(null)
-    const targetDate = eventDateKey(event.date)
-    const myApps = await getMyApplications()
-    const hasSameDate = myApps.some(
-      (app) => app.eventId !== event.id && app.eventDate && eventDateKey(app.eventDate) === targetDate
-    )
-    if (hasSameDate) {
-      setSubmitError('Нельзя записаться на два мероприятия в одну дату. У вас уже есть заявка на этот день.')
-      return
-    }
     setLoading(true)
     try {
+      const targetDate = eventDateKey(event.date)
+      const myApps = await getMyApplications()
+      const hasSameDate = myApps.some(
+        (app) => app.eventId !== event.id && app.eventDate && eventDateKey(app.eventDate) === targetDate
+      )
+      if (hasSameDate) {
+        setSubmitError('Нельзя записаться на два мероприятия в одну дату. У вас уже есть заявка на этот день.')
+        return
+      }
       await createApplication({
         eventId: event.id,
         roleId: data.roleId,

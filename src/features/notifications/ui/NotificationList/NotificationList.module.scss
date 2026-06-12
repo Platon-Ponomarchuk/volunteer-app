@@ -37,11 +37,18 @@
   border-radius: $radius-md;
   background: $color-bg-elevated;
   cursor: default;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  animation: notificationIn 0.22s ease-out both;
 }
 
 .item {
   background: rgba(var(--color-accent-rgb), 0.04);
   border-color: rgba(var(--color-accent-rgb), 0.2);
+}
+
+.item:hover {
+  transform: translateY(-1px);
+  box-shadow: $shadow-sm;
 }
 
 .itemRead {
@@ -76,9 +83,27 @@
   margin-top: $spacing-sm;
 }
 
-.loading,
-.empty {
-  margin: 0;
-  color: $color-text-muted;
-  font-size: 0.9375rem;
+.inlineState {
+  margin-bottom: $spacing-md;
+  min-height: auto;
+}
+
+@keyframes notificationIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item,
+  .itemRead {
+    animation: none;
+    transition: none;
+  }
 }

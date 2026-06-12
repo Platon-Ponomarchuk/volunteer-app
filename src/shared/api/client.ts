@@ -2,6 +2,16 @@ import { env } from '@/shared/config'
 import { clearStoredAuthToken, getStoredAuthToken } from '@/shared/lib'
 import type { ApiError, RequestConfig } from './types'
 
+const DEFAULT_GET_CACHE_TIME = 30_000
+
+interface CacheEntry {
+  expiresAt: number
+  value: unknown
+}
+
+const responseCache = new Map<string, CacheEntry>()
+const inFlightRequests = new Map<string, Promise<unknown>>()
+
 function buildUrl(path: string, params?: Record<string, string>): string {
   const base = env.apiBaseUrl.replace(/\/$/, '')
   if (!base) {
@@ -13,6 +23,15 @@ function buildUrl(path: string, params?: Record<string, string>): string {
   if (!params || Object.keys(params).length === 0) return url
   const search = new URLSearchParams(params).toString()
   return `${url}?${search}`
+}
+
+function getCacheKey(url: string, token: string | null): string {
+  return `${token ?? 'anonymous'}:${url}`
+}
+
+export function clearRequestCache(): void {
+  responseCache.clear()
+  inFlightRequests.clear()
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
@@ -42,7 +61,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 }
 
 export async function request<T>(path: string, config: RequestConfig = {}): Promise<T> {
-  const { method = 'GET', body, params, headers: customHeaders, ...rest } = config
+  const { method = 'GET', body, params, headers: customHeaders, cacheTime, ...rest } = config
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -69,6 +88,39 @@ export async function request<T>(path: string, config: RequestConfig = {}): Prom
   }
 
   const url = buildUrl(path, params)
-  const response = await fetch(url, options)
-  return handleResponse<T>(response)
+  const isGet = method === 'GET'
+  const ttl = cacheTime ?? DEFAULT_GET_CACHE_TIME
+  const cacheKey = isGet && ttl > 0 ? getCacheKey(url, token) : null
+
+  if (cacheKey) {
+    const cached = responseCache.get(cacheKey)
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value as T
+    }
+
+    const pending = inFlightRequests.get(cacheKey)
+    if (pending) {
+      return pending as Promise<T>
+    }
+  } else if (!isGet) {
+    clearRequestCache()
+  }
+
+  const promise = fetch(url, options).then((response) => handleResponse<T>(response))
+
+  if (!cacheKey) {
+    return promise
+  }
+
+  inFlightRequests.set(cacheKey, promise)
+  try {
+    const data = await promise
+    responseCache.set(cacheKey, {
+      expiresAt: Date.now() + ttl,
+      value: data,
+    })
+    return data
+  } finally {
+    inFlightRequests.delete(cacheKey)
+  }
 }

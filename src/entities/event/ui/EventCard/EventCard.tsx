@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { clsx } from 'clsx'
 import { Link } from '@/shared/ui'
 import { Card } from '@/shared/ui'
@@ -12,14 +13,19 @@ export interface EventCardProps {
 }
 
 export function EventCard({ event, className }: EventCardProps) {
+  const [imageFailed, setImageFailed] = useState(false)
+  const hasImage = event.imageUrl && !imageFailed
+
   return (
     <Link to={ROUTES.eventById(event.id)} className={clsx(styles.cardLink, className)}>
       <Card padding="md" className={styles.card}>
         <div className={styles.imageWrapper}>
-          {event.imageUrl ? (
-            <img src={event.imageUrl} alt="" className={styles.image} />
+          {hasImage ? (
+            <img src={event.imageUrl} alt="" className={styles.image} loading="lazy" onError={() => setImageFailed(true)} />
           ) : (
-            <div className={styles.imagePlaceholder} aria-hidden />
+            <div className={styles.imagePlaceholder} aria-hidden>
+              <span>{event.title.slice(0, 1).toUpperCase()}</span>
+            </div>
           )}
         </div>
         <div className={styles.content}>

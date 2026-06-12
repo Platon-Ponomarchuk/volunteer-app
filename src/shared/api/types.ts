@@ -6,6 +6,8 @@ export interface RequestConfig extends Omit<RequestInit, 'method' | 'body'> {
   method?: HttpMethod
   body?: unknown
   params?: Record<string, string>
+  /** TTL кэша для GET-запросов в миллисекундах. 0 отключает кэш. */
+  cacheTime?: number
 }
 
 export interface ApiError {

@@ -1,0 +1,107 @@
+@use 'shared/styles/variables' as *;
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.dropzone {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: $spacing-md;
+  align-items: center;
+  padding: $spacing-md;
+  border: 1px dashed rgba(var(--color-accent-rgb), 0.45);
+  border-radius: $radius-md;
+  background: rgba(var(--color-accent-rgb), 0.05);
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.dropzone:hover:not(.disabled),
+.dropzone:focus-within:not(.disabled) {
+  border-color: $color-accent;
+  background: rgba(var(--color-accent-rgb), 0.09);
+  box-shadow: $shadow-sm;
+  transform: translateY(-1px);
+}
+
+.disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.iconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: $radius-md;
+  background: $color-bg-elevated;
+  color: $color-accent;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.hint {
+  margin-top: 0.125rem;
+  color: $color-text-muted;
+  font-size: 0.8125rem;
+}
+
+.clear {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: $color-accent;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.clear:hover:not(:disabled) {
+  color: $color-accent-hover;
+}
+
+.clear:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropzone {
+    transition: none;
+  }
+
+  .dropzone:hover:not(.disabled),
+  .dropzone:focus-within:not(.disabled) {
+    transform: none;
+  }
+}

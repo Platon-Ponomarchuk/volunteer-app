@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getMyApplications, getApplicationsByEventId } from '@/entities/application'
 import { getMyEventRequests } from '@/entities/event-request'
 import { ApplicationList } from '@/widgets/application-list'
 import { EventRequestList } from '@/widgets/event-request-list'
 import { VolunteerCalendar } from '@/widgets/volunteer-calendar'
-import { Button } from '@/shared/ui'
+import { Button, StateBlock } from '@/shared/ui'
 import { ROUTES } from '@/shared/constants'
 import { useAuthStore } from '@/app/store'
 import styles from './MyApplicationsPage.module.scss'
@@ -20,10 +20,13 @@ export function MyApplicationsPage() {
   const [eventRequests, setEventRequests] = useState<Awaited<ReturnType<typeof getMyEventRequests>>>([])
   const [eventStats, setEventStats] = useState<EventStats>({})
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [applicationsTab, setApplicationsTab] = useState<ApplicationsTab>('list')
 
-  useEffect(() => {
-    const load = async () => {
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
       const [apps, requests] = await Promise.all([
         getMyApplications(),
         user?.role === 'organizer' ? getMyEventRequests() : Promise.resolve([]),
@@ -45,15 +48,22 @@ export function MyApplicationsPage() {
         })
       )
       setEventStats(stats)
+    } catch {
+      setError('Не удалось загрузить заявки. Проверьте подключение к серверу и повторите попытку.')
+    } finally {
+      setLoading(false)
     }
-    load().finally(() => setLoading(false))
   }, [user?.role])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
   if (loading) {
     return (
       <main className={styles.page}>
         <h1 className={styles.title}>Мои заявки</h1>
-        <p>Загрузка...</p>
+        <StateBlock title="Загружаем ваши заявки" description="Проверяем статусы участия и календарь мероприятий." loading />
       </main>
     )
   }
@@ -73,7 +83,11 @@ export function MyApplicationsPage() {
       {user?.role === 'organizer' && (
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Заявки на создание мероприятий</h2>
-          <EventRequestList requests={eventRequests} emptyMessage="У вас пока нет заявок на создание мероприятий" />
+          {error ? (
+            <StateBlock title="Не удалось загрузить заявки" description={error} tone="error" icon="CircleAlert" actionLabel="Повторить" onAction={() => void loadData()} />
+          ) : (
+            <EventRequestList requests={eventRequests} emptyMessage="У вас пока нет заявок на создание мероприятий" />
+          )}
         </section>
       )}
       <section className={styles.section}>
@@ -94,7 +108,9 @@ export function MyApplicationsPage() {
             Календарь
           </button>
         </div>
-        {applicationsTab === 'list' ? (
+        {error ? (
+          <StateBlock title="Не удалось загрузить заявки" description={error} tone="error" icon="CircleAlert" actionLabel="Повторить" onAction={() => void loadData()} />
+        ) : applicationsTab === 'list' ? (
           <ApplicationList
             applications={applications}
             eventStats={eventStats}

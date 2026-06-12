@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Button, Input } from '@/shared/ui'
+import { Button, FileUpload, Input } from '@/shared/ui'
 import { createEvent, updateEvent, uploadEventImage, type CreateEventData, type Event } from '@/entities/event'
 import { createEventRequest } from '@/entities/event-request'
 import { getCategories, type Category } from '@/entities/category'
@@ -183,18 +183,13 @@ export function CreateEventForm({ initialEvent, onSuccess, onError }: CreateEven
           ))}
         </select>
       </div>
-      <div className={styles.field}>
-        <label htmlFor="create-image">Изображение мероприятия</label>
-        <input
-          id="create-image"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-          className={styles.fileInput}
-          disabled={loading}
-        />
-        {imageFile && <span className={styles.fileName}>{imageFile.name}</span>}
-      </div>
+      <FileUpload
+        id="create-image"
+        label="Изображение мероприятия"
+        file={imageFile}
+        onChange={setImageFile}
+        disabled={loading}
+      />
       {error && <p className={styles.error} role="alert">{error}</p>}
       <Button type="submit" disabled={loading}>
         {loading

@@ -29,6 +29,7 @@ export function AdminPage() {
   const [events, setEvents] = useState<Event[]>([])
   const [applicationsCount, setApplicationsCount] = useState(0)
   const [requestFilter, setRequestFilter] = useState<'pending' | 'all'>('pending')
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null)
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -61,6 +62,7 @@ export function AdminPage() {
   }, [activeTab, loadRequests, loadAll])
 
   const getUserName = (id: string) => users.find((u) => u.id === id)?.name ?? id
+  const selectedRequest = requests.find((req) => req.id === selectedRequestId) ?? null
 
   const handleApprove = async (id: string) => {
     setActionLoading(id)
@@ -84,6 +86,7 @@ export function AdminPage() {
         roles: p.roles,
       })
       await approveEventRequest(id, event.id)
+      setSelectedRequestId(null)
       addToast('Заявка одобрена', 'success')
       loadRequests()
     } catch (err) {
@@ -99,6 +102,7 @@ export function AdminPage() {
     try {
       await rejectEventRequest(rejectingId, reason)
       setRejectingId(null)
+      setSelectedRequestId(null)
       addToast('Заявка отклонена', 'success')
       loadRequests()
     } catch (err) {
@@ -178,7 +182,81 @@ export function AdminPage() {
               Все
             </button>
           </div>
-          {loading ? (
+          {selectedRequest ? (
+            <section className={styles.requestDetail}>
+              <button type="button" className={styles.backButton} onClick={() => setSelectedRequestId(null)}>
+                ← К списку заявок
+              </button>
+              {selectedRequest.payload.imageUrl && (
+                <img src={selectedRequest.payload.imageUrl} alt="" className={styles.detailImage} />
+              )}
+              <div className={styles.cardHeader}>
+                <h2 className={styles.detailTitle}>{selectedRequest.payload.title}</h2>
+                <span className={styles.status} data-status={selectedRequest.status}>
+                  {selectedRequest.status === 'pending'
+                    ? 'На рассмотрении'
+                    : selectedRequest.status === 'approved'
+                      ? 'Одобрена'
+                      : 'Отклонена'}
+                </span>
+              </div>
+              <p className={styles.meta}>
+                Организатор: {getUserName(selectedRequest.organizerId)} · заявка от {formatDate(selectedRequest.createdAt)}
+              </p>
+              <div className={styles.detailGrid}>
+                <div>
+                  <span className={styles.detailLabel}>Дата</span>
+                  <strong>{formatDate(selectedRequest.payload.date)}</strong>
+                </div>
+                <div>
+                  <span className={styles.detailLabel}>Город</span>
+                  <strong>{selectedRequest.payload.city || 'Не указан'}</strong>
+                </div>
+                <div>
+                  <span className={styles.detailLabel}>Адрес</span>
+                  <strong>{selectedRequest.payload.location}</strong>
+                </div>
+                {selectedRequest.payload.schedule && (
+                  <div>
+                    <span className={styles.detailLabel}>Расписание</span>
+                    <strong>{selectedRequest.payload.schedule}</strong>
+                  </div>
+                )}
+              </div>
+              <div className={styles.detailSection}>
+                <h3>Описание</h3>
+                <p>{selectedRequest.payload.description}</p>
+              </div>
+              {selectedRequest.payload.roles && selectedRequest.payload.roles.length > 0 && (
+                <div className={styles.detailSection}>
+                  <h3>Роли</h3>
+                  <ul className={styles.roleList}>
+                    {selectedRequest.payload.roles.map((role) => (
+                      <li key={role.id}>
+                        <strong>{role.name}</strong>
+                        <span>{role.requiredCount} чел.</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {selectedRequest.status === 'rejected' && selectedRequest.rejectionReason && (
+                <div className={styles.rejection}>
+                  <strong>Причина отклонения:</strong> {selectedRequest.rejectionReason}
+                </div>
+              )}
+              {selectedRequest.status === 'pending' && (
+                <div className={styles.actions}>
+                  <Button size="sm" onClick={() => handleApprove(selectedRequest.id)} disabled={actionLoading !== null}>
+                    {actionLoading === selectedRequest.id ? '...' : 'Одобрить'}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setRejectingId(selectedRequest.id)} disabled={actionLoading !== null}>
+                    Отклонить
+                  </Button>
+                </div>
+              )}
+            </section>
+          ) : loading ? (
             <p>Загрузка...</p>
           ) : requests.length === 0 ? (
             <p className={styles.empty}>Заявок нет</p>
@@ -210,6 +288,11 @@ export function AdminPage() {
                       <strong>Причина отклонения:</strong> {req.rejectionReason}
                     </div>
                   )}
+                  <div className={styles.actions}>
+                    <Button size="sm" variant="ghost" onClick={() => setSelectedRequestId(req.id)}>
+                      Подробнее
+                    </Button>
+                  </div>
                   {req.status === 'pending' && (
                     <div className={styles.actions}>
                       <Button

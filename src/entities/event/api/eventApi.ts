@@ -34,6 +34,7 @@ export async function getEvents(params?: GetEventsParams): Promise<Event[]> {
 
   const result = await request<Event[]>(BASE, {
     params: Object.keys(searchParams).length > 0 ? searchParams : undefined,
+    cacheTime: 30_000,
   })
   return Array.isArray(result) ? result : []
 }
@@ -62,7 +63,7 @@ export async function getPopularEvents(limit = 6): Promise<Event[]> {
 
 /** Мероприятие по ID */
 export async function getEventById(id: string): Promise<Event> {
-  return request<Event>(`${BASE}/${id}`)
+  return request<Event>(`${BASE}/${id}`, { cacheTime: 60_000 })
 }
 
 export interface CreateEventData {

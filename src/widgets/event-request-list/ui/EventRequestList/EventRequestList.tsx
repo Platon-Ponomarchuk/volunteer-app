@@ -1,4 +1,4 @@
-import { Icon } from '@/shared/ui'
+import { Icon, StateBlock } from '@/shared/ui'
 import { formatDate } from '@/shared/lib'
 import type { EventRequest } from '@/entities/event-request'
 import styles from './EventRequestList.module.scss'
@@ -22,7 +22,13 @@ export interface EventRequestListProps {
 
 export function EventRequestList({ requests, emptyMessage = 'Заявок на создание мероприятий нет' }: EventRequestListProps) {
   if (requests.length === 0) {
-    return <p className={styles.empty}>{emptyMessage}</p>
+    return (
+      <StateBlock
+        title={emptyMessage}
+        description="Созданные вами черновики и заявки на модерацию будут отображаться в этом блоке."
+        icon="CircleQuestion"
+      />
+    )
   }
 
   return (
