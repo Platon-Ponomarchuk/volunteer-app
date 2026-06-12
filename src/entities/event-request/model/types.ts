@@ -12,6 +12,8 @@ export interface EventRequestPayload {
   schedule?: string
   categoryId: string
   maxVolunteers?: number
+  imageUrl?: string
+  imageData?: string
   roles?: { id: string; name: string; requiredCount: number; description?: string }[]
 }
 

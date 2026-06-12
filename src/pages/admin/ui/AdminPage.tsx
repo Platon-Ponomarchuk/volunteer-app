@@ -80,6 +80,7 @@ export function AdminPage() {
         status: 'published',
         organizerId: req.organizerId,
         maxVolunteers: p.maxVolunteers,
+        imageUrl: p.imageUrl,
         roles: p.roles,
       })
       await approveEventRequest(id, event.id)

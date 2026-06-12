@@ -766,7 +766,15 @@ async function init() {
             const id = req.body.id || generateId();
             const { organizerId, status, rejectionReason, eventId } = req.body;
             if (!isAdmin(req) && String(organizerId) !== String(req.user.id || req.user.sub)) return forbid(res);
-            const payload = req.body.payload ? JSON.stringify(req.body.payload) : null;
+            const payloadObject = req.body.payload ? { ...req.body.payload } : null;
+            if (payloadObject?.imageData) {
+                const parsed = parseDataImage(payloadObject.imageData);
+                if (parsed.error) return res.status(400).json({ error: parsed.error });
+                const key = `events/request-${id}-${Date.now()}.${parsed.ext}`;
+                payloadObject.imageUrl = await uploadImage(key, parsed.buffer, parsed.mime);
+                delete payloadObject.imageData;
+            }
+            const payload = payloadObject ? JSON.stringify(payloadObject) : null;
             const createdAt = req.body.createdAt || new Date().toISOString();
             const updatedAt = req.body.updatedAt || new Date().toISOString();
 
@@ -774,7 +782,7 @@ async function init() {
                 UPSERT INTO EventRequests (id, organizerId, status, payload, rejectionReason, eventId, createdAt, updatedAt)
                 VALUES (${id}, ${organizerId}, ${status}, ${payload}, ${rejectionReason || null}, ${eventId || null}, ${createdAt}, ${updatedAt})
             `);
-            res.status(201).json({ id, ...req.body, createdAt, updatedAt });
+            res.status(201).json({ id, ...req.body, payload: payloadObject, createdAt, updatedAt });
         } catch (err) {
             console.error(err); res.status(500).json({ error: 'DB Error' });
         }

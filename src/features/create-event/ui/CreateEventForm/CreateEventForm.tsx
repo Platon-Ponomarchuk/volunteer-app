@@ -60,6 +60,7 @@ export function CreateEventForm({ initialEvent, onSuccess, onError }: CreateEven
         const event = await updateEvent(initialEvent.id, data)
         savedEventId = event.id
       } else if (isOrganizerRequest) {
+        const imageData = imageFile ? await fileToDataUrl(imageFile) : undefined
         await createEventRequest({
           title: data.title,
           description: data.description,
@@ -70,6 +71,7 @@ export function CreateEventForm({ initialEvent, onSuccess, onError }: CreateEven
           schedule: data.schedule,
           categoryId: data.categoryId,
           maxVolunteers: data.maxVolunteers,
+          imageData,
           roles: data.roles,
         })
       } else {
@@ -181,20 +183,18 @@ export function CreateEventForm({ initialEvent, onSuccess, onError }: CreateEven
           ))}
         </select>
       </div>
-      {!isOrganizerRequest && (
-        <div className={styles.field}>
-          <label htmlFor="create-image">Изображение мероприятия</label>
-          <input
-            id="create-image"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-            className={styles.fileInput}
-            disabled={loading}
-          />
-          {imageFile && <span className={styles.fileName}>{imageFile.name}</span>}
-        </div>
-      )}
+      <div className={styles.field}>
+        <label htmlFor="create-image">Изображение мероприятия</label>
+        <input
+          id="create-image"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+          className={styles.fileInput}
+          disabled={loading}
+        />
+        {imageFile && <span className={styles.fileName}>{imageFile.name}</span>}
+      </div>
       {error && <p className={styles.error} role="alert">{error}</p>}
       <Button type="submit" disabled={loading}>
         {loading
