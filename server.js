@@ -9,7 +9,7 @@ const https = require('https');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
-const { uploadImage, deleteImage } = await import('./scripts/s3.js');
+const { uploadImage } = await import('./scripts/s3.js');
 
 const ydbConfig = {
     endpoint: process.env.YDB_ENDPOINT,
@@ -129,6 +129,7 @@ async function init() {
     app.use(limiter);
 
     app.use(express.json({ limit: '6mb' }));
+    const api = express.Router();
 
     const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-change-me';
     if (JWT_SECRET === 'dev-only-change-me') {
@@ -309,7 +310,7 @@ async function init() {
         loginAttempts.delete(getLoginAttemptsKey(email));
     }
 
-    app.get('/users', optionalAuthenticateToken, async (req, res) => {
+    api.get('/users', optionalAuthenticateToken, async (req, res) => {
         try {
             const isPublicOrganizerList = req.query.role === 'organizer' && !req.query.email;
             if (!isPublicOrganizerList && !isAdmin(req)) return forbid(res);
@@ -323,7 +324,7 @@ async function init() {
         }
     });
 
-    app.get('/users/:id', authenticateToken, async (req, res) => {
+    api.get('/users/:id', authenticateToken, async (req, res) => {
         try {
             const [users] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Users WHERE id = ${req.params.id}`);
             if (!users.length) return res.status(404).json({ error: 'Not found' });
@@ -334,7 +335,7 @@ async function init() {
         }
     });
 
-    app.post('/users', authenticateToken, async (req, res) => {
+    api.post('/users', authenticateToken, async (req, res) => {
         try {
             if (!isAdmin(req)) return forbid(res);
             const id = req.body.id || generateId();
@@ -353,7 +354,7 @@ async function init() {
         }
     });
 
-    app.patch('/users/:id', authenticateToken, async (req, res) => {
+    api.patch('/users/:id', authenticateToken, async (req, res) => {
         try {
             const id = req.params.id;
             const [users] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Users WHERE id = ${id}`);
@@ -383,7 +384,7 @@ async function init() {
         }
     });
 
-    app.post('/auth', async (req, res) => {
+    api.post('/auth', async (req, res) => {
         try {
             const { email: emailBody, password } = req.body || {};
             if (!emailBody || password === undefined) {
@@ -440,7 +441,7 @@ async function init() {
         }
     });
 
-    app.post('/auth/register', async (req, res) => {
+    api.post('/auth/register', async (req, res) => {
         try {
             const { email: emailBody, password, name, role } = req.body || {};
             if (!emailBody || !password || !name) {
@@ -481,7 +482,7 @@ async function init() {
         }
     });
 
-    app.get('/auth/me', authenticateToken, async (req, res) => {
+    api.get('/auth/me', authenticateToken, async (req, res) => {
         try {
             const userId = req.user.id || req.user.sub;
             const [users] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Users WHERE id = ${userId}`);
@@ -493,7 +494,7 @@ async function init() {
         }
     });
 
-    app.post('/upload-avatar', authenticateToken, async (req, res) => {
+    api.post('/upload-avatar', authenticateToken, async (req, res) => {
         try {
             const s3Error = ensureS3Configured();
             if (s3Error) return res.status(500).json({ error: s3Error });
@@ -531,7 +532,7 @@ async function init() {
         }
     });
 
-    app.post('/upload-event-image', authenticateToken, async (req, res) => {
+    api.post('/upload-event-image', authenticateToken, async (req, res) => {
         try {
             const s3Error = ensureS3Configured();
             if (s3Error) return res.status(500).json({ error: s3Error });
@@ -565,7 +566,7 @@ async function init() {
         }
     });
 
-    app.get('/events', async (req, res) => {
+    api.get('/events', async (req, res) => {
         try {
             let [events] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Events`);
             events = events.map(e => parseJsonFields(e, ['roles']));
@@ -594,7 +595,7 @@ async function init() {
         }
     });
 
-    app.get('/events/:id', async (req, res) => {
+    api.get('/events/:id', async (req, res) => {
         try {
             const [events] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Events WHERE id = ${req.params.id}`);
             if (!events.length) return res.status(404).json({ error: 'Not found' });
@@ -604,7 +605,7 @@ async function init() {
         }
     });
 
-    app.post('/events', authenticateToken, async (req, res) => {
+    api.post('/events', authenticateToken, async (req, res) => {
         try {
             const id = req.body.id || generateId();
             const { title, description, date, endDate, location, city, schedule, categoryId, status, organizerId, maxVolunteers, imageUrl } = req.body;
@@ -624,7 +625,7 @@ async function init() {
         }
     });
 
-    app.patch('/events/:id', authenticateToken, async (req, res) => {
+    api.patch('/events/:id', authenticateToken, async (req, res) => {
         try {
             const id = req.params.id;
             const [events] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Events WHERE id = ${id}`);
@@ -646,7 +647,7 @@ async function init() {
         }
     });
 
-    app.get('/applications', authenticateToken, async (req, res) => {
+    api.get('/applications', authenticateToken, async (req, res) => {
         try {
             let [apps] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Applications`);
             const currentUserId = String(req.user.id || req.user.sub);
@@ -676,7 +677,7 @@ async function init() {
         }
     });
 
-    app.post('/applications', authenticateToken, async (req, res) => {
+    api.post('/applications', authenticateToken, async (req, res) => {
         try {
             const id = req.body.id || generateId();
             const { eventId, userId, status, roleId, roleName, message, createdAt, updatedAt } = req.body;
@@ -692,7 +693,7 @@ async function init() {
         }
     });
 
-    app.patch('/applications/:id', authenticateToken, async (req, res) => {
+    api.patch('/applications/:id', authenticateToken, async (req, res) => {
         try {
             const id = req.params.id;
             const [apps] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Applications WHERE id = ${id}`);
@@ -715,7 +716,7 @@ async function init() {
         }
     });
 
-    app.delete('/applications/:id', authenticateToken, async (req, res) => {
+    api.delete('/applications/:id', authenticateToken, async (req, res) => {
         try {
             const [apps] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Applications WHERE id = ${req.params.id}`);
             if (!apps.length) return res.status(404).json({ error: 'Not found' });
@@ -731,7 +732,7 @@ async function init() {
         }
     });
 
-    app.get('/notifications', authenticateToken, async (req, res) => {
+    api.get('/notifications', authenticateToken, async (req, res) => {
         try {
             let [notifs] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Notifications`);
             if (req.query.userId && !canAccessUser(req, req.query.userId)) return forbid(res);
@@ -744,7 +745,7 @@ async function init() {
         }
     });
 
-    app.patch('/notifications/:id', authenticateToken, async (req, res) => {
+    api.patch('/notifications/:id', authenticateToken, async (req, res) => {
         try {
             const id = req.params.id;
             const [notifs] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Notifications WHERE id = ${id}`);
@@ -762,7 +763,7 @@ async function init() {
         }
     });
 
-    app.get('/eventRequests', authenticateToken, async (req, res) => {
+    api.get('/eventRequests', authenticateToken, async (req, res) => {
         try {
             let [reqs] = await retry(defaultRetryConfig, () => sql`SELECT * FROM EventRequests`);
             reqs = reqs.map(r => parseJsonFields(r, ['payload']));
@@ -776,7 +777,7 @@ async function init() {
         }
     });
 
-    app.get('/eventRequests/:id', authenticateToken, async (req, res) => {
+    api.get('/eventRequests/:id', authenticateToken, async (req, res) => {
         try {
             const [reqs] = await retry(defaultRetryConfig, () => sql`SELECT * FROM EventRequests WHERE id = ${req.params.id}`);
             if (!reqs.length) return res.status(404).json({ error: 'Not found' });
@@ -787,7 +788,7 @@ async function init() {
         }
     });
 
-    app.post('/eventRequests', authenticateToken, async (req, res) => {
+    api.post('/eventRequests', authenticateToken, async (req, res) => {
         try {
             const id = req.body.id || generateId();
             const { organizerId, status } = req.body;
@@ -826,7 +827,7 @@ async function init() {
         }
     });
 
-    app.patch('/eventRequests/:id', authenticateToken, async (req, res) => {
+    api.patch('/eventRequests/:id', authenticateToken, async (req, res) => {
         try {
             const id = req.params.id;
             const [reqs] = await retry(defaultRetryConfig, () => sql`SELECT * FROM EventRequests WHERE id = ${id}`);
@@ -846,7 +847,7 @@ async function init() {
         }
     });
 
-    app.get('/categories', async (req, res) => {
+    api.get('/categories', async (req, res) => {
         try {
             const [cats] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Categories`);
             res.json(cats);
@@ -854,6 +855,8 @@ async function init() {
             console.error(err); res.status(500).json({ error: 'DB Error' });
         }
     });
+
+    app.use('/api', api);
 
     const PORT = Number(process.env.PORT) || 3000;
     app.listen(PORT, () => {
