@@ -235,6 +235,13 @@ async function init() {
         return row;
     };
 
+    const logYdbError = (label, err) => {
+        console.error(label, err);
+        if (err?.issues) {
+            console.error(`${label} issues:`, JSON.stringify(err.issues, null, 2));
+        }
+    };
+
     const parseDataImage = (image) => {
         if (!image || typeof image !== 'string' || !image.startsWith('data:image')) {
             return { error: 'Invalid image' };
@@ -776,7 +783,7 @@ async function init() {
     app.post('/eventRequests', authenticateToken, async (req, res) => {
         try {
             const id = req.body.id || generateId();
-            const { organizerId, status, rejectionReason, eventId } = req.body;
+            const { organizerId, status } = req.body;
             if (!isAdmin(req) && String(organizerId) !== String(req.user.id || req.user.sub)) return forbid(res);
             const payloadObject = req.body.payload ? { ...req.body.payload } : null;
             if (payloadObject?.imageData) {
@@ -799,13 +806,16 @@ async function init() {
             const updatedAt = req.body.updatedAt || new Date().toISOString();
 
             await retry(defaultRetryConfig, () => sql`
-                UPSERT INTO EventRequests (id, organizerId, status, payload, rejectionReason, eventId, createdAt, updatedAt)
-                VALUES (${id}, ${organizerId}, ${status}, ${payload}, ${rejectionReason || ''}, ${eventId || ''}, ${createdAt}, ${updatedAt})
+                UPSERT INTO EventRequests (id, organizerId, status, payload, createdAt, updatedAt)
+                VALUES (${id}, ${organizerId}, ${status || 'pending'}, CAST(${payload} AS Json), ${createdAt}, ${updatedAt})
             `);
             res.status(201).json({ id, ...req.body, payload: payloadObject, createdAt, updatedAt });
         } catch (err) {
-            console.error('Event request create error:', err);
-            res.status(500).json({ error: 'Event request create failed' });
+            logYdbError('Event request create error:', err);
+            res.status(500).json({
+                error: 'Event request create failed',
+                message: err instanceof Error ? err.message : String(err),
+            });
         }
     });
 
@@ -821,7 +831,7 @@ async function init() {
 
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO EventRequests (id, organizerId, status, payload, rejectionReason, eventId, createdAt, updatedAt)
-                VALUES (${id}, ${updated.organizerId}, ${updated.status}, ${payload || '{}'}, ${updated.rejectionReason || ''}, ${updated.eventId || ''}, ${updated.createdAt}, ${updated.updatedAt})
+                VALUES (${id}, ${updated.organizerId}, ${updated.status}, CAST(${payload || '{}'} AS Json), ${updated.rejectionReason || ''}, ${updated.eventId || ''}, ${updated.createdAt}, ${updated.updatedAt})
             `);
             res.json({ ...updated, payload: typeof updated.payload === 'string' ? JSON.parse(updated.payload) : updated.payload });
         } catch (err) {
