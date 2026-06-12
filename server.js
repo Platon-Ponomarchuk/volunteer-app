@@ -9,12 +9,13 @@ const https = require('https');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
-const { getSACredentialsFromJson } = require('ydb-sdk');
 
 const ydbConfig = {
     endpoint: process.env.YDB_ENDPOINT,
     database: process.env.YDB_DATABASE,
-    authService: getSACredentialsFromJson('./key.json'),
+    authOptions: {
+        serviceAccountFile: './key.json'
+    }
 };
 
 function getYdbConnectionString() {
