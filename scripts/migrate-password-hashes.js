@@ -16,7 +16,9 @@ const force = args.has('--force');
 const ydbConfig = {
   endpoint: process.env.YDB_ENDPOINT,
   database: process.env.YDB_DATABASE,
-  keyFile: process.env.YDB_SERVICE_ACCOUNT_KEY_FILE,
+  authOptions: {
+    serviceAccountFile: './key.json',
+  },
 };
 
 function getYdbConnectionString() {
@@ -91,11 +93,29 @@ async function getIamTokenFromKeyFile(keyFilePath) {
 
 async function main() {
   const connectionString = getYdbConnectionString();
-  let credentials = new EnvironCredentialsProvider(connectionString);
+  let credentials;
 
-  if (ydbConfig.keyFile) {
-    const iamToken = await getIamTokenFromKeyFile(ydbConfig.keyFile);
-    credentials = new AccessTokenCredentialsProvider({ token: iamToken });
+  try {
+    const keyFilePath = ydbConfig.authOptions?.serviceAccountFile;
+    if (keyFilePath && fs.existsSync(keyFilePath)) {
+      const iamToken = await getIamTokenFromKeyFile(keyFilePath);
+      credentials = new AccessTokenCredentialsProvider({ token: iamToken });
+      console.log(`YDB auth: Service Account Key (${keyFilePath})`);
+    } else {
+      credentials = new EnvironCredentialsProvider(connectionString);
+      console.log('YDB auth: EnvironCredentialsProvider');
+      if (
+        !process.env.YDB_METADATA_CREDENTIALS
+        && !process.env.YDB_ACCESS_TOKEN_CREDENTIALS
+        && !process.env.YDB_STATIC_CREDENTIALS_USER
+      ) {
+        console.warn('Warning: key.json was not found and no YDB_* credentials env vars are set.');
+      }
+    }
+  } catch (err) {
+    console.error('Failed to initialize YDB credentials:', err.message);
+    console.error('Check key.json or YDB_SERVICE_ACCOUNT_KEY_FILE.');
+    process.exit(1);
   }
 
   const driverOptions = { credentialsProvider: credentials };
@@ -137,6 +157,11 @@ async function main() {
 }
 
 main().catch((err) => {
+  if (err?.code === 16 || String(err?.message || '').includes('UNAUTHENTICATED')) {
+    console.error('YDB authentication failed.');
+    console.error('Put service account key into ./key.json, or set YDB_SERVICE_ACCOUNT_KEY_FILE=/path/to/key.json.');
+    console.error('Alternative for Yandex Cloud VM: attach a service account and set YDB_METADATA_CREDENTIALS=1.');
+  }
   console.error(err);
   process.exit(1);
 });
