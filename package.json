@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint src --ext .ts,.tsx",
+    "migrate:passwords": "node scripts/migrate-password-hashes.js",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "load:k6": "k6 run load-tests/k6-script.js",
