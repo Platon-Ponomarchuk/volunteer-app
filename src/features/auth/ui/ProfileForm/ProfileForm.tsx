@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Button, FileUpload, Input } from '@/shared/ui'
 import { updateUser, uploadAvatar, type User } from '@/entities/user'
+import { getUserRoleLabel } from '@/entities/user'
 import { useAuthStore } from '@/app/store'
 import { fileToDataUrl } from '@/shared/lib'
 import styles from './ProfileForm.module.scss'
@@ -77,7 +78,7 @@ export function ProfileForm({ user, onSuccess, onError, onCancel }: ProfileFormP
         onChange={setAvatarFile}
         disabled={loading}
       />
-      <p className={styles.role}>Роль: {user.role === 'volunteer' ? 'Волонтёр' : user.role === 'organizer' ? 'Организатор' : 'Администратор'}</p>
+      <p className={styles.role}>Роль: {getUserRoleLabel(user.role)}</p>
       <div className={styles.actions}>
         <Button type="submit" disabled={loading}>
           {loading ? 'Сохранение...' : 'Сохранить'}

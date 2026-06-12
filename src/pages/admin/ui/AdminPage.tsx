@@ -10,7 +10,7 @@ import {
   rejectEventRequest,
 } from '@/entities/event-request'
 import { createEvent, getEvents, updateEvent } from '@/entities/event'
-import { getUsers } from '@/entities/user'
+import { getUserRoleLabel, getUsers, updateUser } from '@/entities/user'
 import { getAllApplications } from '@/entities/application'
 import { RejectEventRequestForm } from '@/features/manage-event-request'
 import { formatDate } from '@/shared/lib'
@@ -120,6 +120,32 @@ export function AdminPage() {
       addToast(status === 'published' ? 'Мероприятие опубликовано' : 'Мероприятие отменено', 'success')
     } catch (err) {
       addToast(err instanceof Error ? err.message : 'Ошибка при изменении статуса', 'error')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleApproveOrganizer = async (userId: string) => {
+    setActionLoading(userId)
+    try {
+      await updateUser(userId, { role: 'organizer' })
+      setUsers((prev) => prev.map((user) => (user.id === userId ? { ...user, role: 'organizer' } : user)))
+      addToast('Организатор одобрен', 'success')
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Ошибка при одобрении организатора', 'error')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleRejectOrganizer = async (userId: string) => {
+    setActionLoading(userId)
+    try {
+      await updateUser(userId, { role: 'volunteer' })
+      setUsers((prev) => prev.map((user) => (user.id === userId ? { ...user, role: 'volunteer' } : user)))
+      addToast('Заявка организатора отклонена, назначена роль волонтёра', 'success')
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Ошибка при отклонении организатора', 'error')
     } finally {
       setActionLoading(null)
     }
@@ -385,10 +411,25 @@ export function AdminPage() {
                 <li key={u.id} className={styles.card}>
                   <div className={styles.cardHeader}>
                     <h2 className={styles.cardTitle}>{u.name}</h2>
-                    <span className={styles.userRole}>{u.role}</span>
+                    <span className={styles.userRole} data-role={u.role}>{getUserRoleLabel(u.role)}</span>
                   </div>
                   <p className={styles.meta}>Email: {u.email}</p>
                   {u.phone && <p className={styles.meta}>Телефон: {u.phone}</p>}
+                  {u.role === 'organizer_pending' && (
+                    <div className={styles.actions}>
+                      <Button size="sm" onClick={() => handleApproveOrganizer(u.id)} disabled={actionLoading !== null}>
+                        {actionLoading === u.id ? '...' : 'Одобрить организатора'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRejectOrganizer(u.id)}
+                        disabled={actionLoading !== null}
+                      >
+                        {actionLoading === u.id ? '...' : 'Отклонить'}
+                      </Button>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

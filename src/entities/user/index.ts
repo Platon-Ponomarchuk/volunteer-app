@@ -1,4 +1,5 @@
 export type { User, UserRole, UserProfile } from './model/types'
+export { getUserRoleLabel, USER_ROLE_LABEL } from './lib/roleLabels'
 export {
   getCurrentUser,
   getUserById,

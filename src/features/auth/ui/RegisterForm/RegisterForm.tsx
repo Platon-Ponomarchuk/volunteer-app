@@ -17,6 +17,7 @@ export function RegisterForm({ onSuccess, onError }: RegisterFormProps) {
   const [nameVal, setNameVal] = useState('')
   const [emailVal, setEmailVal] = useState('')
   const [passwordVal, setPasswordVal] = useState('')
+  const [roleVal, setRoleVal] = useState<NonNullable<RegisterData['role']>>('volunteer')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [nameError, setNameError] = useState<string | null>(null)
@@ -37,7 +38,7 @@ export function RegisterForm({ onSuccess, onError }: RegisterFormProps) {
     if (pErr) { setPasswordError(pErr); return }
     setLoading(true)
     try {
-      const data: RegisterData = { email: emailVal.trim(), password: passwordVal, name: nameVal.trim() }
+      const data: RegisterData = { email: emailVal.trim(), password: passwordVal, name: nameVal.trim(), role: roleVal }
       const user = await register(data)
       setUser(user)
       onSuccess?.()
@@ -84,6 +85,24 @@ export function RegisterForm({ onSuccess, onError }: RegisterFormProps) {
         fullWidth
         disabled={loading}
       />
+      <div className={styles.field}>
+        <label htmlFor="register-role">Тип аккаунта</label>
+        <select
+          id="register-role"
+          value={roleVal}
+          onChange={(e) => setRoleVal(e.target.value as NonNullable<RegisterData['role']>)}
+          className={styles.select}
+          disabled={loading}
+        >
+          <option value="volunteer">Волонтёр</option>
+          <option value="organizer">Организатор</option>
+        </select>
+        <span className={styles.hint}>
+          {roleVal === 'organizer'
+            ? 'Заявку на роль организатора должен одобрить администратор.'
+            : 'Волонтёр может записываться на опубликованные мероприятия.'}
+        </span>
+      </div>
       {error && <p className={styles.error} role="alert">{error}</p>}
       <Button type="submit" fullWidth disabled={loading}>
         {loading ? 'Регистрация...' : 'Зарегистрироваться'}

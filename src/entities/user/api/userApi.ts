@@ -71,7 +71,7 @@ export interface RegisterData {
   email: string
   password: string
   name: string
-  role?: User['role']
+  role?: 'volunteer' | 'organizer'
 }
 
 /** Регистрация: создание пользователя через POST /auth/register */
@@ -106,6 +106,7 @@ export interface UpdateUserData {
   name?: string
   phone?: string
   avatar?: string
+  role?: User['role']
 }
 
 /** Обновить профиль пользователя */

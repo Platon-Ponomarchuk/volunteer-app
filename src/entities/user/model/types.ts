@@ -1,6 +1,6 @@
 /** Роли пользователей */
 
-export type UserRole = 'volunteer' | 'organizer' | 'admin'
+export type UserRole = 'volunteer' | 'organizer_pending' | 'organizer' | 'admin'
 
 export interface User {
   id: string

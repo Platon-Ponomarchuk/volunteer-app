@@ -150,24 +150,42 @@ async function init() {
         );
     }
 
-    function authenticateToken(req, res, next) {
+    async function hydrateTokenUser(decoded) {
+        const userId = decoded?.id || decoded?.sub;
+        if (!userId) return null;
+        const [users] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Users WHERE id = ${dbString(userId)}`);
+        if (!users.length) return null;
+        const user = users[0];
+        return {
+            ...decoded,
+            id: String(user.id),
+            sub: String(user.id),
+            role: String(user.role || decoded.role || 'volunteer'),
+        };
+    }
+
+    async function authenticateToken(req, res, next) {
         const authHeader = req.headers.authorization || '';
         const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
         if (!token) return res.status(401).json({ error: 'Unauthorized' });
         try {
-            req.user = jwt.verify(token, JWT_SECRET);
+            const decoded = jwt.verify(token, JWT_SECRET);
+            const user = await hydrateTokenUser(decoded);
+            if (!user) return res.status(401).json({ error: 'Unauthorized' });
+            req.user = user;
             return next();
         } catch {
             return res.status(401).json({ error: 'Unauthorized' });
         }
     }
 
-    function optionalAuthenticateToken(req, _res, next) {
+    async function optionalAuthenticateToken(req, _res, next) {
         const authHeader = req.headers.authorization || '';
         const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
         if (!token) return next();
         try {
-            req.user = jwt.verify(token, JWT_SECRET);
+            const decoded = jwt.verify(token, JWT_SECRET);
+            req.user = await hydrateTokenUser(decoded);
         } catch {
             req.user = null;
         }
@@ -176,6 +194,10 @@ async function init() {
 
     function isAdmin(req) {
         return req.user?.role === 'admin';
+    }
+
+    function isApprovedOrganizer(req) {
+        return req.user?.role === 'organizer';
     }
 
     function canAccessUser(req, userId) {
@@ -269,6 +291,18 @@ async function init() {
         return typeof roles === 'string' ? roles : JSON.stringify(roles);
     };
 
+    const dbString = (value, fallback = '') => {
+        if (value === null || value === undefined) return fallback;
+        return String(value);
+    };
+
+    const dbNumber = (value, fallback = 0) => {
+        const number = Number(value);
+        return Number.isFinite(number) ? number : fallback;
+    };
+
+    const dbBool = (value) => value === true || value === 'true';
+
     const LOGIN_MAX_ATTEMPTS = 5;
     const LOGIN_WINDOW_MS = 60 * 60 * 1000;
     const LOGIN_BLOCK_MS = 15 * 60 * 1000;
@@ -345,7 +379,7 @@ async function init() {
 
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO Users (id, email, passwordHash, name, role, phone, avatar, createdAt)
-                VALUES (${id}, ${email}, ${passwordHash}, ${name}, ${role || 'volunteer'}, ${phone || null}, ${avatar || null}, ${createdAt})
+                VALUES (${id}, ${dbString(email)}, ${passwordHash}, ${dbString(name)}, ${dbString(role, 'volunteer')}, ${dbString(phone)}, ${dbString(avatar)}, ${createdAt})
             `);
 
             res.status(201).json(sanitizeUser({ id, ...req.body, passwordHash, createdAt }));
@@ -462,9 +496,10 @@ async function init() {
             const id = generateId();
             const createdAt = new Date().toISOString();
             const passwordHash = await bcrypt.hash(String(password), 10);
+            const initialRole = role === 'organizer' ? 'organizer_pending' : 'volunteer';
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO Users (id, email, passwordHash, name, role, phone, avatar, createdAt)
-                VALUES (${id}, ${emailBody}, ${passwordHash}, ${name}, ${role || 'volunteer'}, null, null, ${createdAt})
+                VALUES (${id}, ${emailBody}, ${passwordHash}, ${name}, ${initialRole}, '', '', ${createdAt})
             `);
             const [users] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Users WHERE id = ${id}`);
             const user = users[0];
@@ -556,7 +591,7 @@ async function init() {
 
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO Events (id, title, description, date, endDate, location, city, schedule, categoryId, status, organizerId, maxVolunteers, roles, imageUrl, createdAt, updatedAt)
-                VALUES (${eventId}, ${updated.title}, ${updated.description}, ${updated.date}, ${updated.endDate || ''}, ${updated.location}, ${updated.city || ''}, ${updated.schedule || ''}, ${updated.categoryId}, ${updated.status}, ${updated.organizerId}, ${Number(updated.maxVolunteers || 0)}, CAST(${roles} AS Json), ${updated.imageUrl || ''}, ${updated.createdAt}, ${updated.updatedAt})
+                VALUES (${eventId}, ${dbString(updated.title)}, ${dbString(updated.description)}, ${dbString(updated.date)}, ${dbString(updated.endDate)}, ${dbString(updated.location)}, ${dbString(updated.city)}, ${dbString(updated.schedule)}, ${dbString(updated.categoryId)}, ${dbString(updated.status, 'draft')}, ${dbString(updated.organizerId)}, ${dbNumber(updated.maxVolunteers)}, CAST(${roles} AS Json), ${dbString(updated.imageUrl)}, ${dbString(updated.createdAt, new Date().toISOString())}, ${dbString(updated.updatedAt, new Date().toISOString())})
             `);
 
             res.json({ url });
@@ -609,6 +644,7 @@ async function init() {
         try {
             const id = req.body.id || generateId();
             const { title, description, date, endDate, location, city, schedule, categoryId, status, organizerId, maxVolunteers, imageUrl } = req.body;
+            if (!isAdmin(req) && !isApprovedOrganizer(req)) return forbid(res);
             if (!isAdmin(req) && String(organizerId) !== String(req.user.id || req.user.sub)) return forbid(res);
             const roles = stringifyRoles(req.body.roles);
             const createdAt = req.body.createdAt || new Date().toISOString();
@@ -616,7 +652,7 @@ async function init() {
 
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO Events (id, title, description, date, endDate, location, city, schedule, categoryId, status, organizerId, maxVolunteers, roles, imageUrl, createdAt, updatedAt)
-                VALUES (${id}, ${title}, ${description}, ${date}, ${endDate || ''}, ${location}, ${city || ''}, ${schedule || ''}, ${categoryId}, ${status || 'draft'}, ${organizerId}, ${Number(maxVolunteers || 0)}, CAST(${roles} AS Json), ${imageUrl || ''}, ${createdAt}, ${updatedAt})
+                VALUES (${id}, ${dbString(title)}, ${dbString(description)}, ${dbString(date)}, ${dbString(endDate)}, ${dbString(location)}, ${dbString(city)}, ${dbString(schedule)}, ${dbString(categoryId)}, ${dbString(status, 'draft')}, ${dbString(organizerId)}, ${dbNumber(maxVolunteers)}, CAST(${roles} AS Json), ${dbString(imageUrl)}, ${createdAt}, ${updatedAt})
             `);
             res.status(201).json({ id, ...req.body, createdAt, updatedAt });
         } catch (err) {
@@ -638,7 +674,7 @@ async function init() {
 
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO Events (id, title, description, date, endDate, location, city, schedule, categoryId, status, organizerId, maxVolunteers, roles, imageUrl, createdAt, updatedAt)
-                VALUES (${id}, ${updated.title}, ${updated.description}, ${updated.date}, ${updated.endDate || ''}, ${updated.location}, ${updated.city || ''}, ${updated.schedule || ''}, ${updated.categoryId}, ${updated.status}, ${updated.organizerId}, ${Number(updated.maxVolunteers || 0)}, CAST(${roles} AS Json), ${updated.imageUrl || ''}, ${updated.createdAt}, ${updated.updatedAt})
+                VALUES (${id}, ${dbString(updated.title)}, ${dbString(updated.description)}, ${dbString(updated.date)}, ${dbString(updated.endDate)}, ${dbString(updated.location)}, ${dbString(updated.city)}, ${dbString(updated.schedule)}, ${dbString(updated.categoryId)}, ${dbString(updated.status, 'draft')}, ${dbString(updated.organizerId)}, ${dbNumber(updated.maxVolunteers)}, CAST(${roles} AS Json), ${dbString(updated.imageUrl)}, ${dbString(updated.createdAt, new Date().toISOString())}, ${dbString(updated.updatedAt, new Date().toISOString())})
             `);
             res.json({ ...updated, roles: typeof updated.roles === 'string' ? JSON.parse(updated.roles) : updated.roles });
         } catch (err) {
@@ -685,11 +721,12 @@ async function init() {
 
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO Applications (id, eventId, userId, status, roleId, roleName, message, createdAt, updatedAt)
-                VALUES (${id}, ${eventId}, ${userId}, ${status}, ${roleId || null}, ${roleName || null}, ${message || null}, ${createdAt || new Date().toISOString()}, ${updatedAt || new Date().toISOString()})
+                VALUES (${id}, ${dbString(eventId)}, ${dbString(userId)}, ${dbString(status, 'pending')}, ${dbString(roleId)}, ${dbString(roleName)}, ${dbString(message)}, ${createdAt || new Date().toISOString()}, ${updatedAt || new Date().toISOString()})
             `);
             res.status(201).json({ id, ...req.body });
         } catch (err) {
-            console.error(err); res.status(500).json({ error: 'DB Error' });
+            logYdbError('Application create error:', err);
+            res.status(500).json({ error: 'Application create failed', message: err instanceof Error ? err.message : String(err) });
         }
     });
 
@@ -708,11 +745,12 @@ async function init() {
             const updated = { ...appRow, ...req.body, updatedAt: new Date().toISOString() };
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO Applications (id, eventId, userId, status, roleId, roleName, message, createdAt, updatedAt)
-                VALUES (${id}, ${updated.eventId}, ${updated.userId}, ${updated.status}, ${updated.roleId || null}, ${updated.roleName || null}, ${updated.message || null}, ${updated.createdAt}, ${updated.updatedAt})
+                VALUES (${id}, ${dbString(updated.eventId)}, ${dbString(updated.userId)}, ${dbString(updated.status, 'pending')}, ${dbString(updated.roleId)}, ${dbString(updated.roleName)}, ${dbString(updated.message)}, ${dbString(updated.createdAt, new Date().toISOString())}, ${dbString(updated.updatedAt, new Date().toISOString())})
             `);
             res.json(updated);
         } catch (err) {
-            console.error(err); res.status(500).json({ error: 'DB Error' });
+            logYdbError('Application update error:', err);
+            res.status(500).json({ error: 'Application update failed', message: err instanceof Error ? err.message : String(err) });
         }
     });
 
@@ -755,7 +793,7 @@ async function init() {
             const updated = { ...notifs[0], ...req.body };
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO Notifications (id, userId, title, message, read, createdAt)
-                VALUES (${id}, ${updated.userId}, ${updated.title}, ${updated.message}, ${updated.read ? true : false}, ${updated.createdAt})
+                VALUES (${id}, ${dbString(updated.userId)}, ${dbString(updated.title)}, ${dbString(updated.message)}, ${dbBool(updated.read)}, ${dbString(updated.createdAt, new Date().toISOString())})
             `);
             res.json(updated);
         } catch (err) {
@@ -792,6 +830,7 @@ async function init() {
         try {
             const id = req.body.id || generateId();
             const { organizerId, status } = req.body;
+            if (!isAdmin(req) && !isApprovedOrganizer(req)) return forbid(res);
             if (!isAdmin(req) && String(organizerId) !== String(req.user.id || req.user.sub)) return forbid(res);
             const payloadObject = req.body.payload ? { ...req.body.payload } : null;
             if (payloadObject?.imageData) {
@@ -815,7 +854,7 @@ async function init() {
 
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO EventRequests (id, organizerId, status, payload, createdAt, updatedAt)
-                VALUES (${id}, ${organizerId}, ${status || 'pending'}, CAST(${payload} AS Json), ${createdAt}, ${updatedAt})
+                VALUES (${id}, ${dbString(organizerId)}, ${dbString(status, 'pending')}, CAST(${payload} AS Json), ${createdAt}, ${updatedAt})
             `);
             res.status(201).json({ id, ...req.body, payload: payloadObject, createdAt, updatedAt });
         } catch (err) {
@@ -839,7 +878,7 @@ async function init() {
 
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO EventRequests (id, organizerId, status, payload, rejectionReason, eventId, createdAt, updatedAt)
-                VALUES (${id}, ${updated.organizerId}, ${updated.status}, CAST(${payload || '{}'} AS Json), ${updated.rejectionReason || ''}, ${updated.eventId || ''}, ${updated.createdAt}, ${updated.updatedAt})
+                VALUES (${id}, ${dbString(updated.organizerId)}, ${dbString(updated.status, 'pending')}, CAST(${payload || '{}'} AS Json), ${dbString(updated.rejectionReason)}, ${dbString(updated.eventId)}, ${dbString(updated.createdAt, new Date().toISOString())}, ${dbString(updated.updatedAt, new Date().toISOString())})
             `);
             res.json({ ...updated, payload: typeof updated.payload === 'string' ? JSON.parse(updated.payload) : updated.payload });
         } catch (err) {

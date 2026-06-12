@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Card, Button, Icon } from '@/shared/ui'
 import { useAuthStore } from '@/app/store'
 import { ProfileForm } from '@/features/auth'
+import { getUserRoleLabel } from '@/entities/user'
 import { ROUTES } from '@/shared/constants'
 import styles from './ProfilePage.module.scss'
 
@@ -21,8 +22,7 @@ export function ProfilePage() {
     navigate(ROUTES.main)
   }
 
-  const roleLabel =
-    user.role === 'volunteer' ? 'Волонтёр' : user.role === 'organizer' ? 'Организатор' : 'Администратор'
+  const roleLabel = getUserRoleLabel(user.role)
 
   return (
     <main className={styles.page}>

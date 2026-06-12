@@ -158,6 +158,16 @@
   color: $color-text;
 }
 
+.userRole[data-role='organizer_pending'] {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+[data-theme='dark'] .userRole[data-role='organizer_pending'] {
+  color: #fef3c7;
+  background: rgba(245, 158, 11, 0.25);
+}
+
 .analytics {
   display: flex;
   flex-wrap: wrap;

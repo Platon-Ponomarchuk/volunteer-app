@@ -7,6 +7,33 @@
   max-width: 360px;
 }
 
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+.field label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.select {
+  min-height: 44px;
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  background: $color-bg;
+  color: $color-text;
+  font: inherit;
+}
+
+.hint {
+  color: $color-text-muted;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
 .error {
   margin: 0;
   font-size: 0.875rem;

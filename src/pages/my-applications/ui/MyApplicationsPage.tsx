@@ -80,6 +80,14 @@ export function MyApplicationsPage() {
           </Button>
         )}
       </div>
+      {user?.role === 'organizer_pending' && (
+        <StateBlock
+          title="Заявка на роль организатора ожидает одобрения"
+          description="После одобрения администратором здесь появится возможность создавать мероприятия."
+          icon="CircleQuestion"
+          className={styles.section}
+        />
+      )}
       {user?.role === 'organizer' && (
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Заявки на создание мероприятий</h2>
