@@ -10,6 +10,7 @@ export interface GetEventsParams {
   city?: string
   search?: string
   status?: string
+  organizerId?: string
   limit?: number
   offset?: number
   /** Поле сортировки */
@@ -27,6 +28,7 @@ export async function getEvents(params?: GetEventsParams): Promise<Event[]> {
   if (params?.city) searchParams.city = params.city
   if (params?.search) searchParams.q = params.search
   if (params?.status) searchParams.status = params.status
+  if (params?.organizerId) searchParams.organizerId = params.organizerId
   if (params?.limit !== undefined) searchParams._limit = String(params.limit)
   if (params?.offset !== undefined) searchParams._start = String(params.offset)
   if (params?.sortBy) searchParams._sort = params.sortBy

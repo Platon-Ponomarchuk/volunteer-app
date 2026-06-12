@@ -121,7 +121,7 @@ async function init() {
 
     const limiter = rateLimit({
         windowMs: 15 * 60 * 1000,
-        max: Number(process.env.RATE_LIMIT_MAX || 100),
+        max: Number(process.env.RATE_LIMIT_MAX || 5000),
         message: { error: 'Too many requests' },
         standardHeaders: true,
         legacyHeaders: false,

@@ -23,10 +23,36 @@
   margin-bottom: $spacing-xl;
 }
 
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+  margin-bottom: $spacing-md;
+}
+
 .sectionTitle {
   margin: 0 0 $spacing-md;
   font-size: 1.125rem;
   font-weight: 600;
+}
+
+.sectionHeader .sectionTitle {
+  margin-bottom: 0;
+}
+
+.counter {
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: $color-accent;
+  color: white;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .tabs {
@@ -56,4 +82,80 @@
 .tabActive {
   color: $color-accent;
   border-bottom-color: $color-accent;
+}
+
+.organizerList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.organizerItem {
+  padding: $spacing-md;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  background: $color-bg-elevated;
+}
+
+.organizerItemMain {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+}
+
+.eventTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.meta {
+  margin: $spacing-xs 0 0;
+  color: $color-text-muted;
+  font-size: 0.875rem;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: $radius-sm;
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  &[data-status='pending'] {
+    background: rgba(var(--color-accent-rgb), 0.1);
+    color: $color-text-muted;
+  }
+
+  &[data-status='approved'] {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  &[data-status='rejected'] {
+    background: rgba(var(--color-accent-rgb), 0.15);
+    color: $color-secondary;
+  }
+}
+
+.message {
+  margin: $spacing-sm 0 0;
+  color: $color-text;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.organizerActions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+  margin-top: $spacing-md;
 }
