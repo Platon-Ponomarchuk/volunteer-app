@@ -9,6 +9,7 @@ const https = require('https');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
+const { uploadImage, deleteImage } = await import('./scripts/s3.js');
 
 const ydbConfig = {
     endpoint: process.env.YDB_ENDPOINT,
@@ -127,7 +128,7 @@ async function init() {
     });
     app.use(limiter);
 
-    app.use(express.json());
+    app.use(express.json({ limit: '6mb' }));
 
     const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-change-me';
     if (JWT_SECRET === 'dev-only-change-me') {
@@ -232,6 +233,21 @@ async function init() {
             }
         });
         return row;
+    };
+
+    const parseDataImage = (image) => {
+        if (!image || typeof image !== 'string' || !image.startsWith('data:image')) {
+            return { error: 'Invalid image' };
+        }
+        const match = image.match(/^data:image\/(jpeg|jpg|png|webp);base64,([a-zA-Z0-9+/=]+)$/);
+        if (!match) return { error: 'Invalid format' };
+
+        const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
+        const mime = match[1] === 'jpg' ? 'image/jpeg' : `image/${match[1]}`;
+        const buffer = Buffer.from(match[2], 'base64');
+        if (buffer.length > 5 * 1024 * 1024) return { error: 'Image is too large' };
+
+        return { ext, mime, buffer };
     };
 
     const LOGIN_MAX_ATTEMPTS = 5;
@@ -456,6 +472,72 @@ async function init() {
         } catch (err) {
             console.error(err);
             res.status(500).json({ error: 'DB Error' });
+        }
+    });
+
+    app.post('/upload-avatar', authenticateToken, async (req, res) => {
+        try {
+            const parsed = parseDataImage(req.body?.image);
+            if (parsed.error) return res.status(400).json({ error: parsed.error });
+
+            const userId = String(req.user.id || req.user.sub);
+            const [users] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Users WHERE id = ${userId}`);
+            if (!users.length) return res.status(404).json({ error: 'User not found' });
+
+            const key = `avatars/${userId}-${Date.now()}.${parsed.ext}`;
+            const url = await uploadImage(key, parsed.buffer, parsed.mime);
+            const row = users[0];
+            const updated = {
+                id: userId,
+                email: String(row.email ?? ''),
+                passwordHash: String(row.passwordHash ?? ''),
+                name: String(row.name ?? ''),
+                role: String(row.role ?? 'volunteer'),
+                phone: row.phone != null ? String(row.phone) : '',
+                avatar: url,
+                createdAt: String(row.createdAt ?? new Date().toISOString()),
+            };
+
+            await retry(defaultRetryConfig, () => sql`
+                UPSERT INTO Users (id, email, passwordHash, name, role, phone, avatar, createdAt)
+                VALUES (${updated.id}, ${updated.email}, ${updated.passwordHash}, ${updated.name}, ${updated.role}, ${updated.phone}, ${updated.avatar}, ${updated.createdAt})
+            `);
+
+            res.json({ url });
+        } catch (err) {
+            console.error('Upload error:', err);
+            res.status(500).json({ error: 'Upload failed' });
+        }
+    });
+
+    app.post('/upload-event-image', authenticateToken, async (req, res) => {
+        try {
+            const { image, eventId } = req.body || {};
+            if (!eventId) return res.status(400).json({ error: 'eventId is required' });
+
+            const parsed = parseDataImage(image);
+            if (parsed.error) return res.status(400).json({ error: parsed.error });
+
+            const [events] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Events WHERE id = ${eventId}`);
+            if (!events.length) return res.status(404).json({ error: 'Event not found' });
+
+            const event = events[0];
+            if (!isAdmin(req) && String(event.organizerId) !== String(req.user.id || req.user.sub)) return forbid(res);
+
+            const key = `events/${eventId}-${Date.now()}.${parsed.ext}`;
+            const url = await uploadImage(key, parsed.buffer, parsed.mime);
+            const updated = { ...event, imageUrl: url, updatedAt: new Date().toISOString() };
+            const roles = updated.roles && typeof updated.roles !== 'string' ? JSON.stringify(updated.roles) : updated.roles;
+
+            await retry(defaultRetryConfig, () => sql`
+                UPSERT INTO Events (id, title, description, date, endDate, location, city, schedule, categoryId, status, organizerId, maxVolunteers, roles, imageUrl, createdAt, updatedAt)
+                VALUES (${eventId}, ${updated.title}, ${updated.description}, ${updated.date}, ${updated.endDate || null}, ${updated.location}, ${updated.city || null}, ${updated.schedule || null}, ${updated.categoryId}, ${updated.status}, ${updated.organizerId}, ${updated.maxVolunteers ? Number(updated.maxVolunteers) : null}, ${roles}, ${updated.imageUrl}, ${updated.createdAt}, ${updated.updatedAt})
+            `);
+
+            res.json({ url });
+        } catch (err) {
+            console.error('Upload error:', err);
+            res.status(500).json({ error: 'Upload failed' });
         }
     });
 

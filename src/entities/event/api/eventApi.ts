@@ -90,3 +90,11 @@ export async function createEvent(data: CreateEventData): Promise<Event> {
 export async function updateEvent(id: string, data: Partial<CreateEventData>): Promise<Event> {
   return request<Event>(`${BASE}/${id}`, { method: 'PATCH', body: data as unknown as Record<string, unknown> })
 }
+
+/** Загрузить изображение мероприятия */
+export async function uploadEventImage(eventId: string, image: string): Promise<{ url: string }> {
+  return request<{ url: string }>('/upload-event-image', {
+    method: 'POST',
+    body: { eventId, image },
+  })
+}

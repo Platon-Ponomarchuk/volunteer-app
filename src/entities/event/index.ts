@@ -6,6 +6,7 @@ export {
   getEventById,
   createEvent,
   updateEvent,
+  uploadEventImage,
   type GetEventsParams,
   type CreateEventData,
 } from './api/eventApi'

@@ -13,6 +13,28 @@
   color: $color-text-muted;
 }
 
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+
+  label {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+}
+
+.fileInput {
+  max-width: 100%;
+  font: inherit;
+}
+
+.fileName {
+  font-size: 0.8125rem;
+  color: $color-text-muted;
+  overflow-wrap: anywhere;
+}
+
 .error {
   margin: 0;
   font-size: 0.875rem;

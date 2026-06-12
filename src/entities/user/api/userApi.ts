@@ -108,3 +108,11 @@ export interface UpdateUserData {
 export async function updateUser(id: string, data: UpdateUserData): Promise<User> {
   return request<User>(`${BASE}/${id}`, { method: 'PATCH', body: data as Record<string, unknown> })
 }
+
+/** Загрузить аватар текущего пользователя */
+export async function uploadAvatar(image: string): Promise<{ url: string }> {
+  return request<{ url: string }>('/upload-avatar', {
+    method: 'POST',
+    body: { image },
+  })
+}

@@ -36,6 +36,17 @@
   width: 100%;
 }
 
+.fileInput {
+  max-width: 100%;
+  font: inherit;
+}
+
+.fileName {
+  font-size: 0.8125rem;
+  color: $color-text-muted;
+  overflow-wrap: anywhere;
+}
+
 .row {
   display: grid;
   grid-template-columns: 1fr 1fr;

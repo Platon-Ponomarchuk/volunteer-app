@@ -8,6 +8,7 @@ export {
   register,
   logout,
   updateUser,
+  uploadAvatar,
   type LoginCredentials,
   type RegisterData,
   type UpdateUserData,

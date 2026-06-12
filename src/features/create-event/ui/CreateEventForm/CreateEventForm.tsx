@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { Button, Input } from '@/shared/ui'
-import { createEvent, updateEvent, type CreateEventData, type Event } from '@/entities/event'
+import { createEvent, updateEvent, uploadEventImage, type CreateEventData, type Event } from '@/entities/event'
 import { createEventRequest } from '@/entities/event-request'
 import { getCategories, type Category } from '@/entities/category'
 import { useAuthStore } from '@/app/store'
+import { fileToDataUrl } from '@/shared/lib'
 import { useEffect } from 'react'
 import styles from './CreateEventForm.module.scss'
 
@@ -25,6 +26,7 @@ export function CreateEventForm({ initialEvent, onSuccess, onError }: CreateEven
   const [city, setCity] = useState(initialEvent?.city ?? '')
   const [schedule, setSchedule] = useState(initialEvent?.schedule ?? '')
   const [categoryId, setCategoryId] = useState(initialEvent?.categoryId ?? '')
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -53,8 +55,10 @@ export function CreateEventForm({ initialEvent, onSuccess, onError }: CreateEven
       organizerId: user.id,
     }
     try {
+      let savedEventId: string | null = null
       if (isEdit && initialEvent) {
-        await updateEvent(initialEvent.id, data)
+        const event = await updateEvent(initialEvent.id, data)
+        savedEventId = event.id
       } else if (isOrganizerRequest) {
         await createEventRequest({
           title: data.title,
@@ -69,7 +73,13 @@ export function CreateEventForm({ initialEvent, onSuccess, onError }: CreateEven
           roles: data.roles,
         })
       } else {
-        await createEvent(data)
+        const event = await createEvent(data)
+        savedEventId = event.id
+      }
+
+      if (imageFile && savedEventId) {
+        const image = await fileToDataUrl(imageFile)
+        await uploadEventImage(savedEventId, image)
       }
       onSuccess?.()
     } catch {
@@ -171,6 +181,20 @@ export function CreateEventForm({ initialEvent, onSuccess, onError }: CreateEven
           ))}
         </select>
       </div>
+      {!isOrganizerRequest && (
+        <div className={styles.field}>
+          <label htmlFor="create-image">Изображение мероприятия</label>
+          <input
+            id="create-image"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+            className={styles.fileInput}
+            disabled={loading}
+          />
+          {imageFile && <span className={styles.fileName}>{imageFile.name}</span>}
+        </div>
+      )}
       {error && <p className={styles.error} role="alert">{error}</p>}
       <Button type="submit" disabled={loading}>
         {loading

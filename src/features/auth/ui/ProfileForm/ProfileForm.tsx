@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Button, Input } from '@/shared/ui'
-import { updateUser, type User } from '@/entities/user'
+import { updateUser, uploadAvatar, type User } from '@/entities/user'
 import { useAuthStore } from '@/app/store'
+import { fileToDataUrl } from '@/shared/lib'
 import styles from './ProfileForm.module.scss'
 
 export interface ProfileFormProps {
@@ -15,6 +16,7 @@ export function ProfileForm({ user, onSuccess, onError, onCancel }: ProfileFormP
   const setUser = useAuthStore((s) => s.setUser)
   const [name, setName] = useState(user.name)
   const [phone, setPhone] = useState(user.phone ?? '')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
 
@@ -24,7 +26,13 @@ export function ProfileForm({ user, onSuccess, onError, onCancel }: ProfileFormP
     setLoading(true)
     try {
       const updated = await updateUser(user.id, { name, phone: phone || undefined })
-      setUser(updated)
+      if (avatarFile) {
+        const image = await fileToDataUrl(avatarFile)
+        const { url } = await uploadAvatar(image)
+        setUser({ ...updated, avatar: url })
+      } else {
+        setUser(updated)
+      }
       onSuccess?.()
     } catch {
       const msg = 'Не удалось сохранить изменения'
@@ -62,6 +70,18 @@ export function ProfileForm({ user, onSuccess, onError, onCancel }: ProfileFormP
         fullWidth
         disabled={loading}
       />
+      <div className={styles.field}>
+        <label htmlFor="profile-avatar">Аватар</label>
+        <input
+          id="profile-avatar"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
+          disabled={loading}
+          className={styles.fileInput}
+        />
+        {avatarFile && <span className={styles.fileName}>{avatarFile.name}</span>}
+      </div>
       <p className={styles.role}>Роль: {user.role === 'volunteer' ? 'Волонтёр' : user.role === 'organizer' ? 'Организатор' : 'Администратор'}</p>
       <div className={styles.actions}>
         <Button type="submit" disabled={loading}>
