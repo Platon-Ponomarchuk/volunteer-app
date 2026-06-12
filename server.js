@@ -263,6 +263,11 @@ async function init() {
         return missing.length ? `S3 is not configured: ${missing.join(', ')}` : null;
     };
 
+    const stringifyRoles = (roles) => {
+        if (!roles) return '[]';
+        return typeof roles === 'string' ? roles : JSON.stringify(roles);
+    };
+
     const LOGIN_MAX_ATTEMPTS = 5;
     const LOGIN_WINDOW_MS = 60 * 60 * 1000;
     const LOGIN_BLOCK_MS = 15 * 60 * 1000;
@@ -546,11 +551,11 @@ async function init() {
             const key = `events/${eventId}-${Date.now()}.${parsed.ext}`;
             const url = await uploadImage(key, parsed.buffer, parsed.mime);
             const updated = { ...event, imageUrl: url, updatedAt: new Date().toISOString() };
-            const roles = updated.roles && typeof updated.roles !== 'string' ? JSON.stringify(updated.roles) : updated.roles;
+            const roles = stringifyRoles(updated.roles);
 
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO Events (id, title, description, date, endDate, location, city, schedule, categoryId, status, organizerId, maxVolunteers, roles, imageUrl, createdAt, updatedAt)
-                VALUES (${eventId}, ${updated.title}, ${updated.description}, ${updated.date}, ${updated.endDate || null}, ${updated.location}, ${updated.city || null}, ${updated.schedule || null}, ${updated.categoryId}, ${updated.status}, ${updated.organizerId}, ${updated.maxVolunteers ? Number(updated.maxVolunteers) : null}, ${roles}, ${updated.imageUrl}, ${updated.createdAt}, ${updated.updatedAt})
+                VALUES (${eventId}, ${updated.title}, ${updated.description}, ${updated.date}, ${updated.endDate || ''}, ${updated.location}, ${updated.city || ''}, ${updated.schedule || ''}, ${updated.categoryId}, ${updated.status}, ${updated.organizerId}, ${Number(updated.maxVolunteers || 0)}, CAST(${roles} AS Json), ${updated.imageUrl || ''}, ${updated.createdAt}, ${updated.updatedAt})
             `);
 
             res.json({ url });
@@ -604,17 +609,18 @@ async function init() {
             const id = req.body.id || generateId();
             const { title, description, date, endDate, location, city, schedule, categoryId, status, organizerId, maxVolunteers, imageUrl } = req.body;
             if (!isAdmin(req) && String(organizerId) !== String(req.user.id || req.user.sub)) return forbid(res);
-            const roles = req.body.roles ? JSON.stringify(req.body.roles) : null;
+            const roles = stringifyRoles(req.body.roles);
             const createdAt = req.body.createdAt || new Date().toISOString();
             const updatedAt = req.body.updatedAt || new Date().toISOString();
 
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO Events (id, title, description, date, endDate, location, city, schedule, categoryId, status, organizerId, maxVolunteers, roles, imageUrl, createdAt, updatedAt)
-                VALUES (${id}, ${title}, ${description}, ${date}, ${endDate || null}, ${location}, ${city || null}, ${schedule || null}, ${categoryId}, ${status || 'draft'}, ${organizerId}, ${maxVolunteers ? Number(maxVolunteers) : null}, ${roles}, ${imageUrl || null}, ${createdAt}, ${updatedAt})
+                VALUES (${id}, ${title}, ${description}, ${date}, ${endDate || ''}, ${location}, ${city || ''}, ${schedule || ''}, ${categoryId}, ${status || 'draft'}, ${organizerId}, ${Number(maxVolunteers || 0)}, CAST(${roles} AS Json), ${imageUrl || ''}, ${createdAt}, ${updatedAt})
             `);
             res.status(201).json({ id, ...req.body, createdAt, updatedAt });
         } catch (err) {
-            console.error(err); res.status(500).json({ error: 'DB Error' });
+            logYdbError('Event create error:', err);
+            res.status(500).json({ error: 'Event create failed', message: err instanceof Error ? err.message : String(err) });
         }
     });
 
@@ -627,15 +633,16 @@ async function init() {
             const e = events[0];
             if (!isAdmin(req) && String(e.organizerId) !== String(req.user.id || req.user.sub)) return forbid(res);
             const updated = { ...e, ...req.body, updatedAt: new Date().toISOString() };
-            const roles = updated.roles && typeof updated.roles !== 'string' ? JSON.stringify(updated.roles) : updated.roles;
+            const roles = stringifyRoles(updated.roles);
 
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO Events (id, title, description, date, endDate, location, city, schedule, categoryId, status, organizerId, maxVolunteers, roles, imageUrl, createdAt, updatedAt)
-                VALUES (${id}, ${updated.title}, ${updated.description}, ${updated.date}, ${updated.endDate || null}, ${updated.location}, ${updated.city || null}, ${updated.schedule || null}, ${updated.categoryId}, ${updated.status}, ${updated.organizerId}, ${updated.maxVolunteers ? Number(updated.maxVolunteers) : null}, ${roles}, ${updated.imageUrl || null}, ${updated.createdAt}, ${updated.updatedAt})
+                VALUES (${id}, ${updated.title}, ${updated.description}, ${updated.date}, ${updated.endDate || ''}, ${updated.location}, ${updated.city || ''}, ${updated.schedule || ''}, ${updated.categoryId}, ${updated.status}, ${updated.organizerId}, ${Number(updated.maxVolunteers || 0)}, CAST(${roles} AS Json), ${updated.imageUrl || ''}, ${updated.createdAt}, ${updated.updatedAt})
             `);
             res.json({ ...updated, roles: typeof updated.roles === 'string' ? JSON.parse(updated.roles) : updated.roles });
         } catch (err) {
-            console.error(err); res.status(500).json({ error: 'DB Error' });
+            logYdbError('Event update error:', err);
+            res.status(500).json({ error: 'Event update failed', message: err instanceof Error ? err.message : String(err) });
         }
     });
 
