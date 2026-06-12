@@ -103,7 +103,6 @@ async function init() {
         .split(',')
         .map(origin => origin.trim())
         .filter(Boolean);
-    // TODO: Перед деплоем добавить production origin демо-стенда, например https://your-demo.vercel.app.
     app.use((req, res, next) => {
         const origin = req.headers.origin;
         if (!origin || allowedOrigins.includes(origin)) {
@@ -186,15 +185,22 @@ async function init() {
     }
 
     const connectionString = getYdbConnectionString();
-    let credentials = new EnvironCredentialsProvider(connectionString);
-
-    if (ydbConfig.keyFile) {
-        try {
-            const iamToken = await getIamTokenFromKeyFile(ydbConfig.keyFile);
+    
+    let credentials;
+    try {
+        const keyFilePath = ydbConfig.authOptions?.serviceAccountFile;
+        if (keyFilePath && fs.existsSync(keyFilePath)) {
+            const iamToken = await getIamTokenFromKeyFile(keyFilePath);
             credentials = new AccessTokenCredentialsProvider({ token: iamToken });
-        } catch (err) {
-            console.error('Ошибка получения IAM-токена из ключа:', err.message);
+            console.log('YDB авторизация через Service Account Key');
+        } else {
+            credentials = new EnvironCredentialsProvider(connectionString);
+            console.log('YDB авторизация через EnvironCredentialsProvider');
         }
+    } catch (err) {
+        console.error('Ошибка получения IAM-токена:', err.message);
+        console.error('Проверьте наличие файла key.json и его содержимое');
+        process.exit(1);
     }
 
     const driverOptions = { credentialsProvider: credentials };
@@ -204,12 +210,12 @@ async function init() {
     try {
         ydb = new Driver(connectionString, driverOptions);
         sql = query(ydb);
+        console.log('YDB драйвер инициализирован');
     } catch (e) {
         console.error('YDB init error:', e.message);
         process.exit(1);
     }
 
-    // Helper: Сортировка (так как динамический ORDER BY сложен в YQL)
     const sortData = (data, sortBy, order) => {
         if (!sortBy) return data;
         return data.sort((a, b) => {
@@ -219,7 +225,6 @@ async function init() {
         });
     };
 
-    // Helper: парсинг JSON колонок (в YDB могут храниться как строки)
     const parseJsonFields = (row, fields) => {
         fields.forEach(f => {
             if (row[f] && typeof row[f] === 'string') {
@@ -229,11 +234,10 @@ async function init() {
         return row;
     };
 
-    // Ограничение входа: 5 неудачных попыток за 1 час → блок на 15 минут (по email)
     const LOGIN_MAX_ATTEMPTS = 5;
-    const LOGIN_WINDOW_MS = 60 * 60 * 1000;   // 1 час
-    const LOGIN_BLOCK_MS = 15 * 60 * 1000;    // 15 минут
-    const loginAttempts = new Map(); // key: email (lowercase), value: { attempts: number[], blockedUntil: number | null }
+    const LOGIN_WINDOW_MS = 60 * 60 * 1000;
+    const LOGIN_BLOCK_MS = 15 * 60 * 1000;
+    const loginAttempts = new Map();
 
     function getLoginAttemptsKey(email) {
         return String(email || '').trim().toLowerCase();
@@ -271,7 +275,6 @@ async function init() {
         loginAttempts.delete(getLoginAttemptsKey(email));
     }
 
-    // --- USERS ---
     app.get('/users', optionalAuthenticateToken, async (req, res) => {
         try {
             const isPublicOrganizerList = req.query.role === 'organizer' && !req.query.email;
@@ -346,7 +349,6 @@ async function init() {
         }
     });
 
-    // --- AUTH ---
     app.post('/auth', async (req, res) => {
         try {
             const { email: emailBody, password } = req.body || {};
@@ -457,7 +459,6 @@ async function init() {
         }
     });
 
-    // --- EVENTS ---
     app.get('/events', async (req, res) => {
         try {
             let [events] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Events`);
@@ -537,7 +538,6 @@ async function init() {
         }
     });
 
-    // --- APPLICATIONS ---
     app.get('/applications', authenticateToken, async (req, res) => {
         try {
             let [apps] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Applications`);
@@ -623,7 +623,6 @@ async function init() {
         }
     });
 
-    // --- NOTIFICATIONS ---
     app.get('/notifications', authenticateToken, async (req, res) => {
         try {
             let [notifs] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Notifications`);
@@ -655,7 +654,6 @@ async function init() {
         }
     });
 
-    // --- EVENT REQUESTS ---
     app.get('/eventRequests', authenticateToken, async (req, res) => {
         try {
             let [reqs] = await retry(defaultRetryConfig, () => sql`SELECT * FROM EventRequests`);
@@ -720,7 +718,6 @@ async function init() {
         }
     });
 
-    // --- CATEGORIES ---
     app.get('/categories', async (req, res) => {
         try {
             const [cats] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Categories`);
