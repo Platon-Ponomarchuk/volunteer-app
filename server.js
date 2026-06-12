@@ -9,12 +9,12 @@ const https = require('https');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
-const { getMetadataCredentials } = require('ydb-sdk');
+const { MetadataAuthService } = require('ydb-sdk');
 
 const ydbConfig = {
     endpoint: process.env.YDB_ENDPOINT,
     database: process.env.YDB_DATABASE,
-    authService: getMetadataCredentials(),
+    authService: new MetadataAuthService(),
 };
 
 function getYdbConnectionString() {
