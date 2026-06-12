@@ -1,5 +1,5 @@
 import { request } from '@/shared/api'
-import { AUTH_USER_ID_KEY } from '@/shared/constants'
+import { getCurrentUserIdFromToken } from '@/shared/lib'
 import type { Application } from '../model/types'
 
 const BASE = '/applications'
@@ -26,7 +26,7 @@ const APPLICATIONS_LIMIT = 30
 
 /** Заявки текущего пользователя (сервер подставляет event по _expand=event), лимит 30 */
 export async function getMyApplications(): Promise<(Application & { eventMaxVolunteers?: number })[]> {
-  const userId = typeof window !== 'undefined' ? localStorage.getItem(AUTH_USER_ID_KEY) : null
+  const userId = getCurrentUserIdFromToken()
   if (!userId) return []
   const result = await request<(Application & { event?: { title: string; date: string; maxVolunteers?: number } })[]>(
     `${BASE}`,
@@ -46,7 +46,7 @@ export async function createApplication(data: {
   roleName?: string
   message?: string
 }): Promise<Application> {
-  const userId = typeof window !== 'undefined' ? localStorage.getItem(AUTH_USER_ID_KEY) : null
+  const userId = getCurrentUserIdFromToken()
   if (!userId) throw new Error('Необходима авторизация')
   const now = new Date().toISOString()
   const body = {

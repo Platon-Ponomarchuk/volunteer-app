@@ -1,5 +1,5 @@
 import { request } from '@/shared/api'
-import { AUTH_USER_ID_KEY } from '@/shared/constants'
+import { getCurrentUserIdFromToken } from '@/shared/lib'
 import type { EventRequest, EventRequestPayload } from '../model/types'
 
 const BASE = '/eventRequests'
@@ -19,7 +19,7 @@ export async function getEventRequests(params?: { status?: string }): Promise<Ev
 
 /** Заявки текущего организатора */
 export async function getMyEventRequests(): Promise<EventRequest[]> {
-  const userId = typeof window !== 'undefined' ? localStorage.getItem(AUTH_USER_ID_KEY) : null
+  const userId = getCurrentUserIdFromToken()
   if (!userId) return []
   const result = await request<EventRequest[]>(BASE, { params: { organizerId: userId } })
   return Array.isArray(result) ? result : []
@@ -27,7 +27,7 @@ export async function getMyEventRequests(): Promise<EventRequest[]> {
 
 /** Создать заявку на создание мероприятия */
 export async function createEventRequest(payload: EventRequestPayload): Promise<EventRequest> {
-  const userId = typeof window !== 'undefined' ? localStorage.getItem(AUTH_USER_ID_KEY) : null
+  const userId = getCurrentUserIdFromToken()
   if (!userId) throw new Error('Необходима авторизация')
   const now = new Date().toISOString()
   const body = {

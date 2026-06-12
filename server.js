@@ -1,8 +1,14 @@
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
 require('dotenv').config();
 const express = require('express');
 const fs = require('fs');
 const crypto = require('crypto');
 const https = require('https');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 
 const ydbConfig = {
     endpoint: process.env.YDB_ENDPOINT,
@@ -91,18 +97,91 @@ async function init() {
 
     const app = express();
 
-    const corsOrigin = process.env.CORS_ORIGIN || '*';
+    const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:5173')
+        .split(',')
+        .map(origin => origin.trim())
+        .filter(Boolean);
+    // TODO: Перед деплоем добавить production origin демо-стенда, например https://your-demo.vercel.app.
     app.use((req, res, next) => {
-        res.setHeader('Access-Control-Allow-Origin', corsOrigin);
+        const origin = req.headers.origin;
+        if (!origin || allowedOrigins.includes(origin)) {
+            res.setHeader('Access-Control-Allow-Origin', origin || allowedOrigins[0]);
+        }
+        res.setHeader('Vary', 'Origin');
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
         if (req.method === 'OPTIONS') {
             return res.sendStatus(200);
         }
         next();
     });
 
+    const limiter = rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: Number(process.env.RATE_LIMIT_MAX || 100),
+        message: { error: 'Too many requests' },
+        standardHeaders: true,
+        legacyHeaders: false,
+    });
+    app.use(limiter);
+
     app.use(express.json());
+
+    const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-change-me';
+    if (JWT_SECRET === 'dev-only-change-me') {
+        console.warn('[security] JWT_SECRET не задан. Используется dev-only секрет для локального MVP.');
+    }
+
+    function sanitizeUser(user) {
+        if (!user) return user;
+        const { password: _password, passwordHash: _passwordHash, ...safeUser } = user;
+        return safeUser;
+    }
+
+    function createAuthToken(user) {
+        return jwt.sign(
+            { sub: String(user.id), id: String(user.id), role: user.role || 'volunteer' },
+            JWT_SECRET,
+            { expiresIn: '2h' }
+        );
+    }
+
+    function authenticateToken(req, res, next) {
+        const authHeader = req.headers.authorization || '';
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+        if (!token) return res.status(401).json({ error: 'Unauthorized' });
+        try {
+            req.user = jwt.verify(token, JWT_SECRET);
+            return next();
+        } catch {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+    }
+
+    function optionalAuthenticateToken(req, _res, next) {
+        const authHeader = req.headers.authorization || '';
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+        if (!token) return next();
+        try {
+            req.user = jwt.verify(token, JWT_SECRET);
+        } catch {
+            req.user = null;
+        }
+        return next();
+    }
+
+    function isAdmin(req) {
+        return req.user?.role === 'admin';
+    }
+
+    function canAccessUser(req, userId) {
+        return isAdmin(req) || String(req.user?.id) === String(userId) || String(req.user?.sub) === String(userId);
+    }
+
+    function forbid(res) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
 
     const connectionString = getYdbConnectionString();
     let credentials = new EnvironCredentialsProvider(connectionString);
@@ -191,67 +270,75 @@ async function init() {
     }
 
     // --- USERS ---
-    app.get('/users', async (req, res) => {
+    app.get('/users', optionalAuthenticateToken, async (req, res) => {
         try {
+            const isPublicOrganizerList = req.query.role === 'organizer' && !req.query.email;
+            if (!isPublicOrganizerList && !isAdmin(req)) return forbid(res);
             let [users] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Users`);
             if (req.query.email) users = users.filter(u => u.email === req.query.email);
             if (req.query.role) users = users.filter(u => u.role === req.query.role);
             if (req.query._limit) users = users.slice(0, Number(req.query._limit));
-            res.json(users);
+            res.json(users.map(sanitizeUser));
         } catch (err) {
             console.error(err); res.status(500).json({ error: 'DB Error' });
         }
     });
 
-    app.get('/users/:id', async (req, res) => {
+    app.get('/users/:id', authenticateToken, async (req, res) => {
         try {
             const [users] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Users WHERE id = ${req.params.id}`);
             if (!users.length) return res.status(404).json({ error: 'Not found' });
-            res.json(users[0]);
+            if (!canAccessUser(req, users[0].id)) return forbid(res);
+            res.json(sanitizeUser(users[0]));
         } catch (err) {
             console.error(err); res.status(500).json({ error: 'DB Error' });
         }
     });
 
-    app.post('/users', async (req, res) => {
+    app.post('/users', authenticateToken, async (req, res) => {
         try {
+            if (!isAdmin(req)) return forbid(res);
             const id = req.body.id || generateId();
             const { email, password, name, role, phone, avatar } = req.body;
+            const passwordHash = password ? await bcrypt.hash(password, 10) : '';
             const createdAt = req.body.createdAt || new Date().toISOString();
 
             await retry(defaultRetryConfig, () => sql`
-                UPSERT INTO Users (id, email, password, name, role, phone, avatar, createdAt)
-                VALUES (${id}, ${email}, ${password || ''}, ${name}, ${role || 'volunteer'}, ${phone || null}, ${avatar || null}, ${createdAt})
+                UPSERT INTO Users (id, email, passwordHash, name, role, phone, avatar, createdAt)
+                VALUES (${id}, ${email}, ${passwordHash}, ${name}, ${role || 'volunteer'}, ${phone || null}, ${avatar || null}, ${createdAt})
             `);
 
-            res.status(201).json({ id, ...req.body, createdAt });
+            res.status(201).json(sanitizeUser({ id, ...req.body, passwordHash, createdAt }));
         } catch (err) {
             console.error(err); res.status(500).json({ error: 'DB Error' });
         }
     });
 
-    app.patch('/users/:id', async (req, res) => {
+    app.patch('/users/:id', authenticateToken, async (req, res) => {
         try {
             const id = req.params.id;
             const [users] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Users WHERE id = ${id}`);
             if (!users.length) return res.status(404).json({ error: 'Not found' });
+            if (!canAccessUser(req, id)) return forbid(res);
 
             const row = users[0];
             const updated = {
                 id,
                 email: String(row.email ?? ''),
-                password: String(row.password ?? ''),
+                passwordHash: req.body.password
+                    ? await bcrypt.hash(String(req.body.password), 10)
+                    : String(row.passwordHash ?? ''),
                 name: String(req.body.name ?? row.name ?? ''),
-                role: String(req.body.role ?? row.role ?? 'volunteer'),
+                role: String(isAdmin(req) ? (req.body.role ?? row.role ?? 'volunteer') : (row.role ?? 'volunteer')),
                 phone: req.body.phone != null ? String(req.body.phone) : String(row.phone ?? ''),
                 avatar: req.body.avatar != null ? String(req.body.avatar) : String(row.avatar ?? ''),
                 createdAt: String(row.createdAt ?? new Date().toISOString()),
             };
             await retry(defaultRetryConfig, () => sql`
-                UPSERT INTO Users (id, email, password, name, role, phone, avatar, createdAt)
-                VALUES (${updated.id}, ${updated.email}, ${updated.password}, ${updated.name}, ${updated.role}, ${updated.phone}, ${updated.avatar}, ${updated.createdAt})
+                UPSERT INTO Users (id, email, passwordHash, name, role, phone, avatar, createdAt)
+                VALUES (${updated.id}, ${updated.email}, ${updated.passwordHash}, ${updated.name}, ${updated.role}, ${updated.phone}, ${updated.avatar}, ${updated.createdAt})
             `);
-            res.json(updated);
+            res.json(sanitizeUser(updated));
         } catch (err) {
             console.error(err); res.status(500).json({ error: 'DB Error' });
         }
@@ -290,7 +377,9 @@ async function init() {
                 });
             }
             const user = users[0];
-            if (user.password !== password) {
+            const storedHash = String(user.passwordHash ?? '');
+            const passwordOk = storedHash ? await bcrypt.compare(String(password), storedHash) : false;
+            if (!passwordOk) {
                 recordLoginFailure(emailBody);
                 return res.status(200).json({
                     status: 'FAIL',
@@ -299,12 +388,13 @@ async function init() {
                 });
             }
             clearLoginAttempts(emailBody);
-            const { password: _p, ...userWithoutPassword } = user;
+            const token = createAuthToken(user);
             res.status(200).json({
                 status: 'OK',
                 error: null,
                 message: null,
-                user: userWithoutPassword,
+                user: sanitizeUser(user),
+                token,
             });
         } catch (err) {
             console.error(err);
@@ -332,22 +422,36 @@ async function init() {
             }
             const id = generateId();
             const createdAt = new Date().toISOString();
+            const passwordHash = await bcrypt.hash(String(password), 10);
             await retry(defaultRetryConfig, () => sql`
-                UPSERT INTO Users (id, email, password, name, role, phone, avatar, createdAt)
-                VALUES (${id}, ${emailBody}, ${password}, ${name}, ${role || 'volunteer'}, null, null, ${createdAt})
+                UPSERT INTO Users (id, email, passwordHash, name, role, phone, avatar, createdAt)
+                VALUES (${id}, ${emailBody}, ${passwordHash}, ${name}, ${role || 'volunteer'}, null, null, ${createdAt})
             `);
             const [users] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Users WHERE id = ${id}`);
             const user = users[0];
-            const { password: _p, ...userWithoutPassword } = user;
+            const token = createAuthToken(user);
             res.status(200).json({
                 status: 'OK',
                 error: null,
                 message: null,
-                user: userWithoutPassword,
+                user: sanitizeUser(user),
+                token,
             });
         } catch (err) {
             console.error(err);
             res.status(500).json({ status: 'FAIL', error: 'SERVER_ERROR', message: 'Ошибка сервера' });
+        }
+    });
+
+    app.get('/auth/me', authenticateToken, async (req, res) => {
+        try {
+            const userId = req.user.id || req.user.sub;
+            const [users] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Users WHERE id = ${userId}`);
+            if (!users.length) return res.status(404).json({ error: 'Not found' });
+            res.json(sanitizeUser(users[0]));
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ error: 'DB Error' });
         }
     });
 
@@ -391,10 +495,11 @@ async function init() {
         }
     });
 
-    app.post('/events', async (req, res) => {
+    app.post('/events', authenticateToken, async (req, res) => {
         try {
             const id = req.body.id || generateId();
             const { title, description, date, endDate, location, city, schedule, categoryId, status, organizerId, maxVolunteers, imageUrl } = req.body;
+            if (!isAdmin(req) && String(organizerId) !== String(req.user.id || req.user.sub)) return forbid(res);
             const roles = req.body.roles ? JSON.stringify(req.body.roles) : null;
             const createdAt = req.body.createdAt || new Date().toISOString();
             const updatedAt = req.body.updatedAt || new Date().toISOString();
@@ -409,13 +514,14 @@ async function init() {
         }
     });
 
-    app.patch('/events/:id', async (req, res) => {
+    app.patch('/events/:id', authenticateToken, async (req, res) => {
         try {
             const id = req.params.id;
             const [events] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Events WHERE id = ${id}`);
             if (!events.length) return res.status(404).json({ error: 'Not found' });
 
             const e = events[0];
+            if (!isAdmin(req) && String(e.organizerId) !== String(req.user.id || req.user.sub)) return forbid(res);
             const updated = { ...e, ...req.body, updatedAt: new Date().toISOString() };
             const roles = updated.roles && typeof updated.roles !== 'string' ? JSON.stringify(updated.roles) : updated.roles;
 
@@ -430,16 +536,24 @@ async function init() {
     });
 
     // --- APPLICATIONS ---
-    app.get('/applications', async (req, res) => {
+    app.get('/applications', authenticateToken, async (req, res) => {
         try {
             let [apps] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Applications`);
+            const currentUserId = String(req.user.id || req.user.sub);
+
+            if (req.query.userId && !isAdmin(req) && String(req.query.userId) !== currentUserId) return forbid(res);
+            if (!req.query.userId && !req.query.eventId && !isAdmin(req)) return forbid(res);
+            if (req.query.eventId && !isAdmin(req)) {
+                const [events] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Events WHERE id = ${req.query.eventId}`);
+                if (!events.length || String(events[0].organizerId) !== currentUserId) return forbid(res);
+            }
 
             if (req.query.eventId) apps = apps.filter(a => String(a.eventId) === req.query.eventId);
             if (req.query.userId) apps = apps.filter(a => String(a.userId) === req.query.userId);
 
             if (req.query._expand === 'user') {
                 const [users] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Users`);
-                apps = apps.map(a => ({ ...a, user: users.find(u => String(u.id) === String(a.userId)) }));
+                apps = apps.map(a => ({ ...a, user: sanitizeUser(users.find(u => String(u.id) === String(a.userId))) }));
             }
             if (req.query._expand === 'event') {
                 const [events] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Events`);
@@ -452,10 +566,11 @@ async function init() {
         }
     });
 
-    app.post('/applications', async (req, res) => {
+    app.post('/applications', authenticateToken, async (req, res) => {
         try {
             const id = req.body.id || generateId();
             const { eventId, userId, status, roleId, roleName, message, createdAt, updatedAt } = req.body;
+            if (!isAdmin(req) && String(userId) !== String(req.user.id || req.user.sub)) return forbid(res);
 
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO Applications (id, eventId, userId, status, roleId, roleName, message, createdAt, updatedAt)
@@ -467,13 +582,19 @@ async function init() {
         }
     });
 
-    app.patch('/applications/:id', async (req, res) => {
+    app.patch('/applications/:id', authenticateToken, async (req, res) => {
         try {
             const id = req.params.id;
             const [apps] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Applications WHERE id = ${id}`);
             if (!apps.length) return res.status(404).json({ error: 'Not found' });
+            const appRow = apps[0];
+            const [events] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Events WHERE id = ${appRow.eventId}`);
+            const currentUserId = String(req.user.id || req.user.sub);
+            const ownsApplication = String(appRow.userId) === currentUserId;
+            const ownsEvent = events.length && String(events[0].organizerId) === currentUserId;
+            if (!isAdmin(req) && !ownsApplication && !ownsEvent) return forbid(res);
 
-            const updated = { ...apps[0], ...req.body, updatedAt: new Date().toISOString() };
+            const updated = { ...appRow, ...req.body, updatedAt: new Date().toISOString() };
             await retry(defaultRetryConfig, () => sql`
                 UPSERT INTO Applications (id, eventId, userId, status, roleId, roleName, message, createdAt, updatedAt)
                 VALUES (${id}, ${updated.eventId}, ${updated.userId}, ${updated.status}, ${updated.roleId || null}, ${updated.roleName || null}, ${updated.message || null}, ${updated.createdAt}, ${updated.updatedAt})
@@ -484,8 +605,15 @@ async function init() {
         }
     });
 
-    app.delete('/applications/:id', async (req, res) => {
+    app.delete('/applications/:id', authenticateToken, async (req, res) => {
         try {
+            const [apps] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Applications WHERE id = ${req.params.id}`);
+            if (!apps.length) return res.status(404).json({ error: 'Not found' });
+            const [events] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Events WHERE id = ${apps[0].eventId}`);
+            const currentUserId = String(req.user.id || req.user.sub);
+            const ownsApplication = String(apps[0].userId) === currentUserId;
+            const ownsEvent = events.length && String(events[0].organizerId) === currentUserId;
+            if (!isAdmin(req) && !ownsApplication && !ownsEvent) return forbid(res);
             await retry(defaultRetryConfig, () => sql`DELETE FROM Applications WHERE id = ${req.params.id}`);
             res.status(204).send();
         } catch (err) {
@@ -494,9 +622,11 @@ async function init() {
     });
 
     // --- NOTIFICATIONS ---
-    app.get('/notifications', async (req, res) => {
+    app.get('/notifications', authenticateToken, async (req, res) => {
         try {
             let [notifs] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Notifications`);
+            if (req.query.userId && !canAccessUser(req, req.query.userId)) return forbid(res);
+            if (!req.query.userId && !isAdmin(req)) return forbid(res);
             if (req.query.userId) notifs = notifs.filter(n => String(n.userId) === req.query.userId);
             notifs = sortData(notifs, req.query._sort, req.query._order);
             res.json(notifs);
@@ -505,11 +635,12 @@ async function init() {
         }
     });
 
-    app.patch('/notifications/:id', async (req, res) => {
+    app.patch('/notifications/:id', authenticateToken, async (req, res) => {
         try {
             const id = req.params.id;
             const [notifs] = await retry(defaultRetryConfig, () => sql`SELECT * FROM Notifications WHERE id = ${id}`);
             if (!notifs.length) return res.status(404).json({ error: 'Not found' });
+            if (!canAccessUser(req, notifs[0].userId)) return forbid(res);
 
             const updated = { ...notifs[0], ...req.body };
             await retry(defaultRetryConfig, () => sql`
@@ -523,10 +654,12 @@ async function init() {
     });
 
     // --- EVENT REQUESTS ---
-    app.get('/eventRequests', async (req, res) => {
+    app.get('/eventRequests', authenticateToken, async (req, res) => {
         try {
             let [reqs] = await retry(defaultRetryConfig, () => sql`SELECT * FROM EventRequests`);
             reqs = reqs.map(r => parseJsonFields(r, ['payload']));
+            if (req.query.organizerId && !canAccessUser(req, req.query.organizerId)) return forbid(res);
+            if (!req.query.organizerId && !isAdmin(req)) return forbid(res);
             if (req.query.organizerId) reqs = reqs.filter(r => String(r.organizerId) === req.query.organizerId);
             if (req.query.status) reqs = reqs.filter(r => r.status === req.query.status);
             res.json(reqs);
@@ -535,20 +668,22 @@ async function init() {
         }
     });
 
-    app.get('/eventRequests/:id', async (req, res) => {
+    app.get('/eventRequests/:id', authenticateToken, async (req, res) => {
         try {
             const [reqs] = await retry(defaultRetryConfig, () => sql`SELECT * FROM EventRequests WHERE id = ${req.params.id}`);
             if (!reqs.length) return res.status(404).json({ error: 'Not found' });
+            if (!canAccessUser(req, reqs[0].organizerId)) return forbid(res);
             res.json(parseJsonFields(reqs[0], ['payload']));
         } catch (err) {
             console.error(err); res.status(500).json({ error: 'DB Error' });
         }
     });
 
-    app.post('/eventRequests', async (req, res) => {
+    app.post('/eventRequests', authenticateToken, async (req, res) => {
         try {
             const id = req.body.id || generateId();
             const { organizerId, status, rejectionReason, eventId } = req.body;
+            if (!isAdmin(req) && String(organizerId) !== String(req.user.id || req.user.sub)) return forbid(res);
             const payload = req.body.payload ? JSON.stringify(req.body.payload) : null;
             const createdAt = req.body.createdAt || new Date().toISOString();
             const updatedAt = req.body.updatedAt || new Date().toISOString();
@@ -563,11 +698,12 @@ async function init() {
         }
     });
 
-    app.patch('/eventRequests/:id', async (req, res) => {
+    app.patch('/eventRequests/:id', authenticateToken, async (req, res) => {
         try {
             const id = req.params.id;
             const [reqs] = await retry(defaultRetryConfig, () => sql`SELECT * FROM EventRequests WHERE id = ${id}`);
             if (!reqs.length) return res.status(404).json({ error: 'Not found' });
+            if (!canAccessUser(req, reqs[0].organizerId)) return forbid(res);
 
             const updated = { ...reqs[0], ...req.body, updatedAt: new Date().toISOString() };
             const payload = updated.payload && typeof updated.payload !== 'string' ? JSON.stringify(updated.payload) : updated.payload;

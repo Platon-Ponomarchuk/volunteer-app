@@ -9,8 +9,8 @@ export interface User {
   role: UserRole
   avatar?: string
   phone?: string
-  /** Может приходить с API, в UI не отображать */
-  password?: string
+  /** Может приходить только из служебных API, в UI не отображать */
+  passwordHash?: string
   createdAt: string
 }
 

@@ -1,5 +1,5 @@
 import { request } from '@/shared/api'
-import { AUTH_USER_ID_KEY } from '@/shared/constants'
+import { clearStoredAuthToken, getStoredAuthToken, setStoredAuthToken } from '@/shared/lib'
 import type { User } from '../model/types'
 
 const BASE = '/users'
@@ -9,15 +9,15 @@ export interface AuthResponse {
   error: string | null
   message: string | null
   user?: User
+  token?: string
 }
 
-/** Текущий авторизованный пользователь (по id из localStorage) */
+/** Текущий авторизованный пользователь (по JWT) */
 export async function getCurrentUser(): Promise<User | null> {
   if (typeof window === 'undefined') return null
-  const userId = localStorage.getItem(AUTH_USER_ID_KEY)
-  if (!userId) return null
+  if (!getStoredAuthToken()) return null
   try {
-    return await request<User>(`${BASE}/${userId}`)
+    return await request<User>('/auth/me')
   } catch {
     return null
   }
@@ -59,8 +59,8 @@ export async function login(credentials: LoginCredentials): Promise<User> {
   if (!res.user) {
     throw new Error('Ошибка входа')
   }
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(AUTH_USER_ID_KEY, res.user.id)
+  if (res.token) {
+    setStoredAuthToken(res.token)
   }
   return res.user
 }
@@ -87,17 +87,15 @@ export async function register(data: RegisterData): Promise<User> {
   if (!res.user) {
     throw new Error('Ошибка регистрации')
   }
-  if (typeof window !== 'undefined' && res.user.id) {
-    localStorage.setItem(AUTH_USER_ID_KEY, res.user.id)
+  if (res.token) {
+    setStoredAuthToken(res.token)
   }
   return res.user
 }
 
-/** Выход: очистка localStorage */
+/** Выход: очистка JWT из localStorage */
 export function logout(): void {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem(AUTH_USER_ID_KEY)
-  }
+  clearStoredAuthToken()
 }
 
 export interface UpdateUserData {

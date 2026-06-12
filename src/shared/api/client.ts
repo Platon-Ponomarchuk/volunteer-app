@@ -1,4 +1,5 @@
 import { env } from '@/shared/config'
+import { clearStoredAuthToken, getStoredAuthToken } from '@/shared/lib'
 import type { ApiError, RequestConfig } from './types'
 
 function buildUrl(path: string, params?: Record<string, string>): string {
@@ -16,6 +17,9 @@ function buildUrl(path: string, params?: Record<string, string>): string {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
+    if (response.status === 401) {
+      clearStoredAuthToken()
+    }
     const error: ApiError = {
       message: response.statusText,
       status: response.status,
@@ -40,14 +44,23 @@ async function handleResponse<T>(response: Response): Promise<T> {
 export async function request<T>(path: string, config: RequestConfig = {}): Promise<T> {
   const { method = 'GET', body, params, headers: customHeaders, ...rest } = config
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...customHeaders,
+  }
+  if (customHeaders) {
+    new Headers(customHeaders).forEach((value, key) => {
+      headers[key] = value
+    })
+  }
+  const token = getStoredAuthToken()
+  if (token && !('Authorization' in headers)) {
+    headers.Authorization = `Bearer ${token}`
   }
 
   const options: RequestInit = {
     method,
     headers,
+    credentials: 'include',
     ...rest,
   }
 
